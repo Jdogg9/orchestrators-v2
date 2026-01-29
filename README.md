@@ -1,7 +1,59 @@
 # ORCHESTRATORS_V2
 
+[![CI](https://github.com/Jdogg9/orchestrators-v2/actions/workflows/ci.yml/badge.svg)](https://github.com/Jdogg9/orchestrators-v2/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
 A reproducible, local-first reference implementation of the **Orchestrator** pattern:
 a stable identity + routing + tools + optional memory, designed for *your* machine and *your* rules.
+
+## What This Is / What This Is Not
+
+**✅ IS:**
+- Safe reference architecture for LLM orchestration
+- Privacy-first patterns (no data exfiltration)
+- Guardrails for secrets, state, and runtime isolation
+- Extensible framework for tools, memory, routing
+
+**❌ NOT:**
+- A turnkey agent (you bring your own models/identity)
+- A hosted service (runs locally only)
+- A magic model (requires Ollama/OpenAI/etc.)
+
+## 30-Second Proof
+
+```bash
+# 1. Setup (one command)
+python3 -m venv .venv && source .venv/bin/activate && pip install -r requirements.txt
+
+# 2. Run server
+cp .env.example .env  # Uses safe defaults
+python -m src.server &
+
+# 3. Health check
+curl http://127.0.0.1:8088/health
+# Expected: {"status":"ok","server":"ORCHESTRATORS_V2"}
+
+# 4. Verify no secrets leaked
+./scripts/verify_public_boundary.sh
+# Expected: ✅ PUBLIC BOUNDARY SAFE (5/5 checks passing)
+```
+
+## Example Orchestrator Loop
+
+```python
+# Pseudo-code demonstrating the pattern
+def orchestrate(user_request):
+    # 1. Router chooses appropriate tool/model
+    route = router.select(user_request)
+    
+    # 2. Tool executes with guardrails
+    result = tools.execute(route.tool, route.params, 
+                           scrub_secrets=True,
+                           log_usage=True)
+    
+    # 3. Response returned (state never persisted by default)
+    return {"response": result, "route": route.name}
+```
 
 ## Quickstart (5 minutes)
 ```bash
@@ -13,24 +65,26 @@ cp .env.example .env
 python -m src.server
 ```
 
-## What this is
+Server runs on `http://127.0.0.1:8088` with OpenAI-compatible shape (optional).
 
-* A small HTTP service that exposes a chat endpoint (OpenAI-ish shape optional)
-* A router that selects models (chat/tool/embed)
-* A tool interface you can extend safely
-* Optional memory + recall behind feature flags (OFF by default)
+## Security Model (Defaults)
 
-## What this is NOT
+* **Local-first**: No cloud dependencies
+* **No exfiltration**: Data stays on your machine
+* **Feature flags**: Memory/recall/tools OFF by default
+* **Runtime state**: Never committed (see [.gitignore](.gitignore))
 
-* Not a cloud service
-* Not preconfigured with private identities
-* Not shipping your runtime artifacts (DBs, frames, logs)
+## Documentation
 
-## Security model (defaults)
+- [Architecture](docs/ARCHITECTURE.md) - Layer design (API → orchestrator → tools → persistence)
+- [Threat Model](docs/THREAT_MODEL.md) - Security stance and mitigations
+- [Public Release Guide](docs/PUBLIC_RELEASE_GUIDE.md) - Maintenance workflow
 
-* Local-first
-* No exfiltration by default
-* Feature flags for anything sensitive (memory/recall/tools)
-* Runtime state never committed
+## Contributing
 
-See `docs/` for architecture + threat model.
+This is a reference implementation. Fork it, extend it, break it. Key extension points:
+- `src/router.py` - Model selection logic
+- `src/tools/` - Custom tool implementations
+- `src/memory.py` - RAG/memory patterns (optional)
+
+Run `./scripts/verify_public_boundary.sh` before committing to ensure no secrets leaked.
