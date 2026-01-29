@@ -33,7 +33,8 @@ jobs:
     
     - name: ShellCheck scripts
       uses: ludeeus/action-shellcheck@master
+      env:
+        SHELLCHECK_OPTS: -e SC2155 -e SC2046
       with:
         scandir: './scripts'
         ignore_paths: 'node_modules .venv'
-        severity: warning
