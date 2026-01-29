@@ -19,6 +19,13 @@ def require_bearer():
 def health():
     return {"status": "ok", "service": "orchestrators_v2"}
 
+@app.post("/echo")
+def echo():
+    """Echo endpoint for testing - returns message field as 'echo' response"""
+    data = request.get_json(force=True, silent=True) or {}
+    message = data.get("message", "")
+    return jsonify({"echo": message}), 200
+
 @app.post("/v1/chat/completions")
 def chat_completions():
     ok, err = require_bearer()
