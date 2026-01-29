@@ -1,0 +1,35 @@
+# Secrets
+.env
+*.key
+*.pem
+
+# Runtime state
+instance/
+*.db
+*.sqlite
+*.sqlite3
+
+# Visual recall / frames
+recall_frames/
+instance/recall_frames/
+instance/recall_memory.db
+instance/orchestrator_core.db
+
+# Logs / artifacts / backups
+logs/
+*.log
+orchestrator_backups/
+backups/
+evidence_bundles/
+release_snapshot.json
+RELEASE_CANDIDATE_SIGNOFF*.md
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+.envrc
+
+# OS
+.DS_Store
