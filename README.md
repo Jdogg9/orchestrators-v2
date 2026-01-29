@@ -87,6 +87,7 @@ Server runs on `http://127.0.0.1:8088` with OpenAI-compatible shape (optional).
 
 ## Documentation
 
+- [Operational Philosophy](docs/OPERATIONAL_PHILOSOPHY.md) - **Why** we built it this way (bounded memory, receipts, rehearsals, defaults off, automation)
 - [Architecture](docs/ARCHITECTURE.md) - Layer design (API → orchestrator → tools → persistence)
 - [Threat Model](docs/THREAT_MODEL.md) - Security stance and mitigations
 - [Public Release Guide](docs/PUBLIC_RELEASE_GUIDE.md) - Maintenance workflow
