@@ -2,7 +2,9 @@
 
 ## What This Is
 
-A **sanitized, reproducible reference implementation** of the Orchestrator pattern extracted from private ORCHESTRATOR system. Safe to publish, free of secrets, designed for "bring-your-own-identity."
+A **sanitized, reproducible reference implementation** of the Orchestrator pattern extracted from private AIMEE system. Safe to publish, free of secrets, designed for "bring-your-own-identity."
+
+**Project relationship**: v1 (AIMEE_ORCHESTRATORS) is historical/research; **v2 (ORCHESTRATORS_V2) is the maintained public baseline**. The "two organisms" doctrine keeps private production (v1) separate from public distribution (v2).
 
 ## Two Organisms Living in Parallel
 

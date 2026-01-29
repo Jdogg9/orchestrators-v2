@@ -19,6 +19,17 @@ a stable identity + routing + tools + optional memory, designed for *your* machi
 - A hosted service (runs locally only)
 - A magic model (requires Ollama/OpenAI/etc.)
 
+## Project Lineage (v1 → v2)
+
+- **v1 (AIMEE_ORCHESTRATORS)**: Original research/prototype repo that explored the orchestrator pattern in production.
+  Private repo containing identity, runtime state, and battle-tested iterations.
+
+- **v2 (ORCHESTRATORS_V2)**: Sanitized, reproducible reference implementation with safe defaults and boundary verification.
+  This repo is designed for "bring-your-own-identity" and **does not** ship private prompts, runtime state, DBs, recall frames, or tokens.
+
+If you want conceptual background + earlier experiments, v1 is the source.
+If you want the safe public baseline to fork and extend, **use v2**.
+
 ## 30-Second Proof
 
 ```bash
