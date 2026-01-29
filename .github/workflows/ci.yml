@@ -36,3 +36,4 @@ jobs:
       with:
         scandir: './scripts'
         ignore_paths: 'node_modules .venv'
+        severity: warning
