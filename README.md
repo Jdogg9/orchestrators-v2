@@ -49,6 +49,29 @@ curl http://127.0.0.1:8088/health
 # Expected: ✅ PUBLIC BOUNDARY SAFE (5/5 checks passing)
 ```
 
+## Try the Toy Orchestrator (5 minutes)
+
+A minimal, runnable example demonstrating the full pattern:
+
+```bash
+# Setup
+python3 -m venv .venv && source .venv/bin/activate
+pip install -r requirements.txt
+
+# Run interactive mode
+python examples/toy_orchestrator.py
+
+# Try commands:
+> calculate 2 + 2
+> echo hello world
+> trace    # Show decision trace
+> memory   # Show conversation history
+```
+
+**What you'll see**: Bounded memory (10 msg cap), decision traces (receipts), local-only execution (no network).
+
+**Read more**: [examples/README.md](examples/README.md) for architecture walkthrough.
+
 ## Example Orchestrator Loop
 
 ```python
@@ -66,7 +89,7 @@ def orchestrate(user_request):
     return {"response": result, "route": route.name}
 ```
 
-## Quickstart (5 minutes)
+## Quickstart (API Server)
 ```bash
 cd ORCHESTRATORS_V2
 python3 -m venv .venv
@@ -94,9 +117,19 @@ Server runs on `http://127.0.0.1:8088` with OpenAI-compatible shape (optional).
 
 ## Contributing
 
-This is a reference implementation. Fork it, extend it, break it. Key extension points:
-- `src/router.py` - Model selection logic
-- `src/tools/` - Custom tool implementations
-- `src/memory.py` - RAG/memory patterns (optional)
+We welcome contributions that align with our [5 core principles](docs/OPERATIONAL_PHILOSOPHY.md).
 
-Run `./scripts/verify_public_boundary.sh` before committing to ensure no secrets leaked.
+**Before contributing**:
+1. Read [CONTRIBUTING.md](CONTRIBUTING.md) - Development workflow and standards
+2. Read [Operational Philosophy](docs/OPERATIONAL_PHILOSOPHY.md) - Understand the "why"
+3. Run boundary checks: `./scripts/verify_public_boundary.sh`
+
+**Key extension points**:
+- `src/router.py` - Model selection logic
+- `src/tools/` - Custom tool implementations  
+- `src/memory.py` - RAG/memory patterns (optional)
+- `examples/` - Add more teaching examples
+
+**Philosophy alignment required**: Feature requests must answer [5 questions](.github/ISSUE_TEMPLATE/feature_request.md) about bounded memory, receipts, rehearsal, defaults, and automation.
+
+**High bar**: We resist feature creep and protect core principles.

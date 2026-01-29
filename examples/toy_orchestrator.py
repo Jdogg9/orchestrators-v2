@@ -1,0 +1,276 @@
+#!/usr/bin/env python3
+"""
+Toy Orchestrator Example
+========================
+
+A minimal, runnable orchestrator demonstrating:
+- 2 tools (calculator, echo)
+- 1 router (intent detection)
+- 1 memory stub (conversation history)
+- 1 decision loop (orchestrate → execute → respond)
+
+Run: python examples/toy_orchestrator.py
+
+Philosophy alignment:
+- Bounded Memory: Only keeps last 10 messages
+- Receipts: Prints trace of every decision
+- Defaults Off: No persistence without explicit flag
+- Local-First: No network calls (pure Python)
+"""
+
+import json
+from typing import Dict, List, Any
+from datetime import datetime
+
+
+class ToyMemory:
+    """Bounded conversation memory (max 10 messages)"""
+    
+    def __init__(self, max_messages: int = 10):
+        self.messages: List[Dict[str, str]] = []
+        self.max_messages = max_messages
+    
+    def add(self, role: str, content: str) -> None:
+        """Add message and enforce bound"""
+        self.messages.append({"role": role, "content": content, "timestamp": datetime.utcnow().isoformat()})
+        if len(self.messages) > self.max_messages:
+            # Forget oldest (bounded memory principle)
+            self.messages.pop(0)
+            print(f"  🗑️  [Memory] Forgot oldest message (cap: {self.max_messages})")
+    
+    def get_recent(self, n: int = 5) -> List[Dict[str, str]]:
+        """Retrieve last N messages"""
+        return self.messages[-n:]
+    
+    def summary(self) -> str:
+        """Memory receipt"""
+        return f"{len(self.messages)}/{self.max_messages} messages"
+
+
+class ToyTools:
+    """Simple tools: calculator and echo"""
+    
+    @staticmethod
+    def calculator(expression: str) -> str:
+        """Evaluate math expression (UNSAFE - toy only!)"""
+        try:
+            # WARNING: eval() is dangerous - toy example only!
+            result = eval(expression, {"__builtins__": {}}, {})
+            return f"Result: {result}"
+        except Exception as e:
+            return f"Error: {str(e)}"
+    
+    @staticmethod
+    def echo(message: str) -> str:
+        """Echo message back"""
+        return f"Echo: {message}"
+    
+    @staticmethod
+    def list_tools() -> List[str]:
+        """Available tools"""
+        return ["calculator", "echo"]
+
+
+class ToyRouter:
+    """Intent detection (keyword-based - toy only!)"""
+    
+    @staticmethod
+    def route(user_input: str) -> Dict[str, Any]:
+        """Determine which tool to call"""
+        lower_input = user_input.lower()
+        
+        # Simple keyword routing
+        if any(word in lower_input for word in ["calculate", "math", "+", "-", "*", "/"]):
+            # Extract expression (toy heuristic)
+            expression = user_input.split("calculate")[-1].strip() if "calculate" in lower_input else user_input
+            return {
+                "tool": "calculator",
+                "params": {"expression": expression},
+                "confidence": 0.8
+            }
+        
+        elif any(word in lower_input for word in ["echo", "repeat", "say"]):
+            # Extract message
+            message = user_input.split("echo")[-1].strip() if "echo" in lower_input else user_input
+            return {
+                "tool": "echo",
+                "params": {"message": message},
+                "confidence": 0.9
+            }
+        
+        else:
+            # No tool needed - direct response
+            return {
+                "tool": None,
+                "params": {},
+                "confidence": 0.0
+            }
+
+
+class ToyOrchestrator:
+    """Main orchestration loop"""
+    
+    def __init__(self, memory_size: int = 10):
+        self.memory = ToyMemory(max_messages=memory_size)
+        self.tools = ToyTools()
+        self.router = ToyRouter()
+        self.trace: List[Dict[str, Any]] = []
+    
+    def process(self, user_input: str) -> str:
+        """
+        Orchestration loop:
+        1. Add user message to memory
+        2. Route to tool (or direct response)
+        3. Execute tool if needed
+        4. Generate response
+        5. Add response to memory
+        6. Return response + trace
+        """
+        print(f"\n📥 User: {user_input}")
+        
+        # Step 1: Store user message (bounded memory)
+        self.memory.add("user", user_input)
+        
+        # Step 2: Route
+        routing_decision = self.router.route(user_input)
+        self._add_trace("routing", routing_decision)
+        print(f"  🧭 [Router] Tool={routing_decision['tool']}, Confidence={routing_decision['confidence']}")
+        
+        # Step 3: Execute tool (if routed)
+        if routing_decision["tool"]:
+            tool_name = routing_decision["tool"]
+            params = routing_decision["params"]
+            
+            # Call tool
+            if tool_name == "calculator":
+                tool_result = self.tools.calculator(params["expression"])
+            elif tool_name == "echo":
+                tool_result = self.tools.echo(params["message"])
+            else:
+                tool_result = f"Unknown tool: {tool_name}"
+            
+            self._add_trace("tool_execution", {"tool": tool_name, "params": params, "result": tool_result})
+            print(f"  🔧 [Tool] {tool_name}() → {tool_result}")
+            
+            response = tool_result
+        else:
+            # Direct response (no tool)
+            response = f"I heard: '{user_input}'. Try asking me to calculate something or echo a message!"
+            print(f"  💬 [Direct] No tool needed")
+        
+        # Step 4: Store response (bounded memory)
+        self.memory.add("assistant", response)
+        
+        # Step 5: Print receipt
+        print(f"  📊 [Memory] {self.memory.summary()}")
+        print(f"📤 Assistant: {response}")
+        
+        return response
+    
+    def _add_trace(self, event_type: str, data: Dict[str, Any]) -> None:
+        """Add event to trace (receipts principle)"""
+        self.trace.append({
+            "timestamp": datetime.utcnow().isoformat(),
+            "event": event_type,
+            "data": data
+        })
+    
+    def get_trace(self) -> List[Dict[str, Any]]:
+        """Return full trace (receipts over assertions)"""
+        return self.trace
+    
+    def print_trace_summary(self) -> None:
+        """Print trace summary"""
+        print("\n📋 Trace Summary:")
+        for i, event in enumerate(self.trace, 1):
+            print(f"  [{i}] {event['event']} @ {event['timestamp']}")
+
+
+def interactive_demo():
+    """Interactive CLI demo"""
+    print("=" * 60)
+    print("  TOY ORCHESTRATOR - Interactive Demo")
+    print("=" * 60)
+    print("\nCommands:")
+    print("  - 'calculate 2 + 2' → Use calculator tool")
+    print("  - 'echo hello' → Use echo tool")
+    print("  - 'trace' → Show decision trace")
+    print("  - 'memory' → Show conversation history")
+    print("  - 'quit' → Exit")
+    print("\nPhilosophy:")
+    print("  ✓ Bounded Memory (10 messages max)")
+    print("  ✓ Receipts (every decision traced)")
+    print("  ✓ Local-First (no network)")
+    print("=" * 60)
+    
+    orchestrator = ToyOrchestrator(memory_size=10)
+    
+    while True:
+        try:
+            user_input = input("\n> ").strip()
+            
+            if not user_input:
+                continue
+            
+            if user_input.lower() == "quit":
+                print("\n👋 Goodbye!")
+                break
+            
+            if user_input.lower() == "trace":
+                orchestrator.print_trace_summary()
+                continue
+            
+            if user_input.lower() == "memory":
+                recent = orchestrator.memory.get_recent(5)
+                print(f"\n📚 Recent Memory (last 5 of {orchestrator.memory.summary()}):")
+                for msg in recent:
+                    print(f"  [{msg['role']}] {msg['content']}")
+                continue
+            
+            # Process through orchestrator
+            orchestrator.process(user_input)
+            
+        except KeyboardInterrupt:
+            print("\n\n👋 Goodbye!")
+            break
+        except Exception as e:
+            print(f"\n❌ Error: {e}")
+
+
+def automated_demo():
+    """Automated demo (non-interactive)"""
+    print("=" * 60)
+    print("  TOY ORCHESTRATOR - Automated Demo")
+    print("=" * 60)
+    
+    orchestrator = ToyOrchestrator(memory_size=10)
+    
+    # Test cases
+    test_inputs = [
+        "calculate 2 + 2",
+        "echo hello world",
+        "what time is it?",  # No tool match
+        "calculate 10 * 5 + 3",
+        "echo this is a test",
+    ]
+    
+    for user_input in test_inputs:
+        orchestrator.process(user_input)
+    
+    # Print final trace
+    orchestrator.print_trace_summary()
+    
+    print("\n" + "=" * 60)
+    print(f"✅ Demo Complete: {len(test_inputs)} interactions processed")
+    print(f"📊 Memory: {orchestrator.memory.summary()}")
+    print(f"📋 Trace Events: {len(orchestrator.trace)}")
+    print("=" * 60)
+
+
+if __name__ == "__main__":
+    import sys
+    
+    if len(sys.argv) > 1 and sys.argv[1] == "--auto":
+        automated_demo()
+    else:
+        interactive_demo()

@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: 📖 Read Operational Philosophy First
+    url: https://github.com/Jdogg9/orchestrators-v2/blob/main/docs/OPERATIONAL_PHILOSOPHY.md
+    about: Understand the "why" before proposing features
+  - name: 🔍 Check Boundary Verification
+    url: https://github.com/Jdogg9/orchestrators-v2/blob/main/scripts/verify_public_boundary.sh
+    about: Run boundary checks before reporting bugs
