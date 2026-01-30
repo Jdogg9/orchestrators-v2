@@ -1,6 +1,6 @@
 # ORCHESTRATORS_V2
 
-[![CI](https://github.com/Jdogg9/orchestrators-v2/actions/workflows/ci.yml/badge.svg)](https://github.com/Jdogg9/orchestrators-v2/actions/workflows/ci.yml)
+[![CI](https://github.com/Jdogg9/orchestrators-v2/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/Jdogg9/orchestrators-v2/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 ✅ CI enforces public boundary + tests on every push/PR.
