@@ -5,6 +5,9 @@
 
 ✅ CI enforces public boundary + tests on every push/PR.
 
+- 📄 Executive Summary: EXECUTIVE_SUMMARY.md  
+- ✅ Production Action Plan: ACTION_PLAN.md
+
 A reproducible, local-first reference implementation of the **Orchestrator** pattern:
 a stable identity + routing + tools + optional memory, designed for *your* machine and *your* rules.
 
