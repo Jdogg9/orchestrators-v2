@@ -2,9 +2,9 @@ name: CI
 
 on:
   push:
-    branches: [main]
+    branches: [ main ]
   pull_request:
-    branches: [main]
+    branches: [ main ]
 
 jobs:
   test:
@@ -23,20 +23,16 @@ jobs:
           pip install -r requirements.txt
 
       - name: Verify public boundary
-        run: |
-          ./scripts/verify_public_boundary.sh
+        run: ./scripts/verify_public_boundary.sh
 
-      - name: Secret scan (repo-hardening)
-        run: |
-          ./scripts/secret_scan.sh
+      - name: Secret scan
+        run: ./scripts/secret_scan.sh
 
       - name: Repo Facts fast gate
-        run: |
-          pytest -q -k "repo_facts"
+        run: pytest -q -k "repo_facts"
 
       - name: Run pytest
-        run: |
-          pytest -q
+        run: pytest -q
 
       - name: ShellCheck scripts
         uses: ludeeus/action-shellcheck@master
