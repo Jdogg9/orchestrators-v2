@@ -1,0 +1,6 @@
+# ORCHESTRATORS_V2 mirror manifest
+# Format: private_rel:public_rel
+# Lines starting with # are ignored.
+
+scripts/sqlite_maintenance.py:scripts/sqlite_maintenance.py
+scripts/systemd_onfailure_alert.sh:scripts/systemd_onfailure_alert.sh

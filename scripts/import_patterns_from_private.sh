@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # File: scripts/import_patterns_from_private.sh
-# Purpose: Selectively import architectural patterns from private ORCHESTRATOR to public ORCHESTRATORS_V2
-# Safety: Allowlist-only, never copies runtime state or secrets
+# Purpose: Mirror allowlisted files from private AIMEE repo to public ORCHESTRATORS_V2
+# Safety: Allowlist-only (manifest-driven), never copies runtime state or secrets
 
 set -euo pipefail
 
@@ -10,23 +10,13 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PUBLIC="$(cd "$SCRIPT_DIR/.." && pwd)"
 PRIVATE="$(cd "$PUBLIC/../.." && pwd)"
 
-echo "[*] Importing patterns from private to ORCHESTRATORS_V2 (allowlist-only)"
+echo "[*] Mirroring allowlisted files from private to ORCHESTRATORS_V2 (manifest-driven)"
 
-# ALLOWLIST: Files safe to copy (architecture patterns, no secrets/state)
-ALLOWLIST=(
-    # Core orchestration patterns (will be sanitized after copy)
-    # "orchestrator_router.py:src/router.py"              # Model routing logic
-    # "orchestrator_prompts.py:src/prompts.py"            # Prompt templates (sanitize identity)
-    # "orchestrator_scrubber.py:src/scrubber.py"          # Secret redaction (safe pattern)
-    
-    # Hardening infrastructure (already generic)
-    "scripts/sqlite_maintenance.py:scripts/sqlite_maintenance.py"   # DB maintenance pattern
-    "scripts/systemd_onfailure_alert.sh:scripts/systemd_onfailure_alert.sh"  # Alert pattern
-    
-    # Documentation patterns (will be sanitized)
-    # "docs/RUNBOOK.md:docs/RUNBOOK_TEMPLATE.md"   # Operational patterns
-    # "HARDENING_PACK_PLAN.md:docs/HARDENING_GUIDE.md"  # Hardening philosophy
-)
+MANIFEST="$PUBLIC/scripts/mirror_manifest.txt"
+if [[ ! -f "$MANIFEST" ]]; then
+    echo "🛑 ERROR: Mirror manifest not found: $MANIFEST"
+    exit 1
+fi
 
 # BLOCKLIST: Never copy these (secrets, state, identity, runtime)
 BLOCKLIST_PATTERNS=(
@@ -74,15 +64,33 @@ safe_copy() {
     echo "✅ COPIED: $src → $dst"
 }
 
-# Import allowlisted files
-for entry in "${ALLOWLIST[@]}"; do
-    IFS=':' read -r src_rel dst_rel <<< "$entry"
+copied=0
+skipped=0
+blocked=0
+
+# Import allowlisted files from manifest
+while IFS= read -r line; do
+    [[ -z "$line" ]] && continue
+    [[ "$line" =~ ^[[:space:]]*# ]] && continue
+
+    IFS=':' read -r src_rel dst_rel <<< "$line"
+    if [[ -z "$src_rel" || -z "$dst_rel" ]]; then
+        echo "⚠️  SKIP: Invalid manifest entry: $line"
+        skipped=$((skipped + 1))
+        continue
+    fi
+
     src="$PRIVATE/$src_rel"
     dst="$PUBLIC/$dst_rel"
-    
-    safe_copy "$src" "$dst" || true
-done
+
+    if safe_copy "$src" "$dst"; then
+        copied=$((copied + 1))
+    else
+        skipped=$((skipped + 1))
+    fi
+done < "$MANIFEST"
 
 echo ""
-echo "[+] Pattern import complete."
+echo "[+] Mirror import complete."
+echo "    Copied: $copied | Skipped: $skipped"
 echo "    Next: Run sanitize_strings.sh to remove private references"

@@ -31,17 +31,20 @@ Creates clean public structure with:
 - ✅ Minimal server stub (OpenAI-compatible shape)
 - ✅ Architecture + threat model docs
 
-### 2. Import Patterns (OPTIONAL - Controlled)
+### 2. Mirror from Private (OPTIONAL - Manifest Controlled)
 ```bash
 cd PUBLIC_VERSION/ORCHESTRATORS_V2
 ./scripts/import_patterns_from_private.sh
 ```
 
-**Allowlist-only** import of safe architectural patterns:
+**Allowlist-only** mirror of safe architectural patterns (manifest-driven):
 - DB maintenance scripts ✅
 - Alert infrastructure ✅  
 - Router logic (after sanitization) ⚠️
 - Prompt templates (after sanitization) ⚠️
+
+Manifest file:
+- `scripts/mirror_manifest.txt` (format: `private_rel:public_rel`)
 
 **Never imports:**
 - ❌ .env files
@@ -129,8 +132,8 @@ git push -u origin main
 
 ## Safety Principles
 
-**"Allowlist import, never bulk copy"**
-- Only copy specific files you've reviewed
+**"Allowlist mirror, never bulk copy"**
+- Mirror only files listed in `scripts/mirror_manifest.txt`
 - Always run sanitize + verify before push
 - When in doubt, leave it out
 

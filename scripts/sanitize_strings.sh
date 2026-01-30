@@ -12,8 +12,8 @@ PUBLIC="$(cd "$SCRIPT_DIR/.." && pwd)"
 echo "[*] Sanitizing ORCHESTRATORS_V2 (removing private identifiers)"
 
 HOME_DIR="${HOME}"
-PROJECT_ROOT="\\$PROJECT_ROOT"
-BACKUP_DIR="\\$BACKUP_DIR"
+PROJECT_ROOT='$PROJECT_ROOT'
+BACKUP_DIR='$BACKUP_DIR'
 
 # SANITIZATION RULES (private → public)
 declare -A REPLACEMENTS=(
@@ -78,7 +78,11 @@ find "$PUBLIC" -type f \
     ! -path "*/.venv/*" \
     ! -path "*/venv/*" \
     ! -path "*/__pycache__/*" \
+    ! -path "*/.pytest_cache/*" \
     ! -path "./instance/*" \
+    ! -path "*/reports/*" \
+    ! -path "$PUBLIC/scripts/sanitize_strings.sh" \
+    ! -path "$PUBLIC/scripts/verify_public_boundary.sh" \
     ! -name "*.pyc" \
     ! -name "*.db" \
     -print0 | while IFS= read -r -d '' file; do

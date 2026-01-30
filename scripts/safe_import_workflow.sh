@@ -14,7 +14,7 @@ test -f .env.example
 test -f .gitignore
 
 echo ""
-echo "==[2/6] Run allowlist import (patterns only) =="
+echo "==[2/6] Run mirror import (manifest allowlist) =="
 ./scripts/import_patterns_from_private.sh
 
 echo ""
