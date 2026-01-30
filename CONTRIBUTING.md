@@ -61,7 +61,7 @@ Use the [feature request template](.github/ISSUE_TEMPLATE/feature_request.md). *
 ### Setup
 ```bash
 # Clone
-git clone https://github.com/Jdogg9/orchestrators-v2.git
+git clone https://github.com/example-org/orchestrators-v2.git
 cd orchestrators-v2
 
 # Create virtualenv

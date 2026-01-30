@@ -3,7 +3,7 @@
 File: scripts/sqlite_maintenance.py
 Purpose: SQLite database maintenance (VACUUM, TTL enforcement, pruning)
 Usage: python3 sqlite_maintenance.py [--dry-run]
-Schedule: Daily at 03:00 AM via aimee-sqlite-maintenance.timer
+Schedule: Daily at 03:00 AM via orchestrator-sqlite-maintenance.timer
 """
 
 import sys
@@ -27,8 +27,8 @@ VACUUM_ENABLED = int(os.getenv("SQLITE_VACUUM_ENABLED", "1"))
 
 # Per-database TTL configuration (days, 0=disabled)
 TTL_CONFIG = {
-    "agent9_interactions.db": {
-        "ttl_days": int(os.getenv("SQLITE_TTL_AGENT9_DAYS", "0")),
+    "chat_interactions.db": {
+        "ttl_days": int(os.getenv("SQLITE_TTL_CHAT_INTERACTIONS_DAYS", "0")),
         "table": "interactions",
         "timestamp_column": "timestamp",
     },
@@ -50,9 +50,9 @@ RECALL_MAX_DISK_MB = int(os.getenv("SQLITE_MAX_RECALL_DISK_MB", "0"))
 
 # Databases to VACUUM (always safe, no data loss)
 VACUUM_DATABASES = [
-    "aimee_core.db",
+    "orchestrator_core.db",
     "recall_memory.db",
-    "agent9_interactions.db",
+    "chat_interactions.db",
     "api_proxy_interactions.db",
     "usage_telemetry.db",
     "model_switches.db",

@@ -17,12 +17,13 @@ EXIT_CODE=0
 
 # Check 1: No forbidden patterns in code
 echo "[1/5] Checking for forbidden patterns..."
+HOME_DIR="${HOME}"
 FORBIDDEN=(
-    "NEXUSSTL_API_KEY"
+    "ORCH_API_KEY"
     "sk-[a-zA-Z0-9]{32,}"
-    "/home/jay"
-    "aimee_backups"
-    "nexusstl.com"
+    "$HOME_DIR"
+    "backup_dir"
+    "example.com"
     "cloudflared"
 )
 
@@ -33,6 +34,7 @@ for pattern in "${FORBIDDEN[@]}"; do
         --exclude-dir=venv \
         --exclude-dir=__pycache__ \
         --exclude-dir=instance \
+        --exclude-dir=reports \
         --exclude="*.pyc" \
         --exclude=sanitize_strings.sh \
         --exclude=verify_public_boundary.sh \

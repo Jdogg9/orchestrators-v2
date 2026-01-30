@@ -116,7 +116,7 @@ If you answer "no" to multiple questions, reconsider the design.
 
 ## Lineage
 
-These principles evolved from operating the v1 (AIMEE_ORCHESTRATORS) system in production:
+These principles evolved from operating the v1 (ORCHESTRATOR_V1) system in production:
 
 - **Bounded memory** - After hitting 13GB git repo from unbounded recall frames
 - **Receipts** - After "I think backups ran" wasn't good enough for GO signoff

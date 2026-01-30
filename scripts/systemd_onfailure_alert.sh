@@ -13,12 +13,12 @@ set -euo pipefail
 ALERT_LOG_PATH="${ALERT_LOG_PATH:-./logs/alerts.jsonl}"
 ALERT_EMAIL="${ALERT_EMAIL:-}"
 ALERT_DESKTOP_NOTIFY="${ALERT_DESKTOP_NOTIFY:-1}"
-RATE_LIMIT_FILE="/tmp/aimee-alert-rate-limit"
+RATE_LIMIT_FILE="/tmp/orchestrator-alert-rate-limit"
 RATE_LIMIT_SECONDS=300  # 5 minutes
 
 # Secret patterns to redact (regex)
 SECRET_PATTERNS=(
-    "nexusstl_sk_[A-Za-z0-9]+"
+    "orch_sk_[A-Za-z0-9]+"
     "sk-[A-Za-z0-9]{48}"
     "AIza[A-Za-z0-9_-]{35}"
 )
@@ -118,9 +118,9 @@ send_desktop_notify() {
     local scrubbed_message=$(scrub_secrets "$message")
     
     notify-send --urgency=critical \
-                --app-name="AIMEE Alert" \
+                --app-name="Orchestrator Alert" \
                 --icon=dialog-error \
-                "AIMEE Service Failure" \
+                "Orchestrator Service Failure" \
                 "Service: $service\n\n$scrubbed_message" 2>/dev/null || true
 }
 
@@ -142,10 +142,10 @@ send_email() {
     fi
     
     local scrubbed_message=$(scrub_secrets "$message")
-    local subject="AIMEE Alert: $service failed (exit $exit_code)"
+    local subject="Orchestrator Alert: $service failed (exit $exit_code)"
     
     {
-        echo "AIMEE System Alert"
+        echo "Orchestrator System Alert"
         echo "==================="
         echo ""
         echo "Service: $service"
@@ -159,7 +159,7 @@ send_email() {
         echo "  Check logs: journalctl -u $service -n 50"
         echo ""
         echo "---"
-        echo "This is an automated alert from the AIMEE hardening pack."
+        echo "This is an automated alert from the orchestrator hardening pack."
     } | mail -s "$subject" "$ALERT_EMAIL" 2>/dev/null || {
         log_json '{
             "event": "ALERT_EMAIL_FAILED",

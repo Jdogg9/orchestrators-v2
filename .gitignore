@@ -17,7 +17,9 @@ instance/orchestrator_core.db
 
 # Logs / artifacts / backups
 logs/
+reports/
 *.log
+sync_public_version.sh
 orchestrator_backups/
 backups/
 evidence_bundles/
@@ -27,6 +29,7 @@ RELEASE_CANDIDATE_SIGNOFF*.md
 # Python
 __pycache__/
 *.pyc
+.pytest_cache/
 .venv/
 venv/
 .envrc

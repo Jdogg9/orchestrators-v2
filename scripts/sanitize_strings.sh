@@ -11,38 +11,23 @@ PUBLIC="$(cd "$SCRIPT_DIR/.." && pwd)"
 
 echo "[*] Sanitizing ORCHESTRATORS_V2 (removing private identifiers)"
 
+HOME_DIR="${HOME}"
+PROJECT_ROOT="\\$PROJECT_ROOT"
+BACKUP_DIR="\\$BACKUP_DIR"
+
 # SANITIZATION RULES (private → public)
 declare -A REPLACEMENTS=(
-    # Identity (ORCHESTRATOR → ORCHESTRATOR)
-    ["ORCHESTRATOR"]="ORCHESTRATOR"
-    ["orchestrator"]="orchestrator"
-    ["Orchestrator"]="Orchestrator"
-    
-    # Project names
-    ["orchestrators_v2"]="orchestrators_v2"
-    ["orchestrators_v2"]="orchestrators_v2"
-    ["orchestrators_v2"]="orchestrators_v2"
-    ["ORCHESTRATORS_V2"]="ORCHESTRATORS_V2"
-    
-    # Environment variables (NEXUSSTL_* → ORCH_*)
-    ["ORCH_BEARER_TOKEN"]="ORCH_BEARER_TOKEN"
-    ["ORCH_OLLAMA_URL"]="ORCH_OLLAMA_URL"
-    ["ORCH_MODEL"]="ORCH_MODEL"
-    ["ORCH_MEMORY"]="ORCH_MEMORY"
-    ["ORCH_RECALL"]="ORCH_RECALL"
-    
     # Paths (absolute → generic)
-    ["/home/jay/nexusstl-web-flask"]="\\\$PROJECT_ROOT"
-    ["/home/jay/aimee_backups"]="\\\$BACKUP_DIR"
-    ["/home/jay/AIMEE"]="./instance"
-    
+    ["${HOME_DIR}/projects"]="$PROJECT_ROOT"
+    ["${HOME_DIR}/backups"]="$BACKUP_DIR"
+
     # Hostnames (private → public)
-    ["nexusstl.com"]="localhost"
+    ["private.example.com"]="localhost"
     ["cloudflared"]="# cloudflared (not included)"
-    
+
     # Database names (keep generic)
-    ["aimee_core.db"]="orchestrator_core.db"
-    ["agent9_interactions.db"]="interactions.db"
+    ["orchestrator_core.db"]="orchestrator_core.db"
+    ["interactions.db"]="interactions.db"
     ["api_logs.db"]="api_logs.db"
     ["telemetry.db"]="telemetry.db"
 )

@@ -2,16 +2,16 @@
 
 ## What This Is
 
-A **sanitized, reproducible reference implementation** of the Orchestrator pattern extracted from private AIMEE system. Safe to publish, free of secrets, designed for "bring-your-own-identity."
+A **sanitized, reproducible reference implementation** of the Orchestrator pattern extracted from a private system. Safe to publish, free of secrets, designed for "bring-your-own-identity."
 
-**Project relationship**: v1 (AIMEE_ORCHESTRATORS) is historical/research; **v2 (ORCHESTRATORS_V2) is the maintained public baseline**. The "two organisms" doctrine keeps private production (v1) separate from public distribution (v2).
+**Project relationship**: v1 (ORCHESTRATOR_V1) is historical/research; **v2 (ORCHESTRATORS_V2) is the maintained public baseline**. The "two organisms" doctrine keeps private production (v1) separate from public distribution (v2).
 
 ## Two Organisms Living in Parallel
 
 ```
 Private (ORCHESTRATOR)                  Public (ORCHESTRATORS_V2)
 ├─ $PROJECT_ROOT  ├─ PUBLIC_VERSION/ORCHESTRATORS_V2/
-├─ Full power, Jay-specific      ├─ Safe defaults, generic
+├─ Full power, identity-bound    ├─ Safe defaults, generic
 ├─ Recall frames, identity       ├─ Pattern library, no runtime state
 ├─ Production config             ├─ .env.example templates
 └─ Never published               └─ GitHub-ready
@@ -59,8 +59,9 @@ cd PUBLIC_VERSION/ORCHESTRATORS_V2
 Removes private identifiers:
 - ORCHESTRATOR → ORCHESTRATOR
 - localhost → localhost
-- /home/jay/... → $PROJECT_ROOT
-- NEXUSSTL_* → ORCH_*
+- /home/USER/... → $PROJECT_ROOT
+- private domains → localhost
+- private tokens → ORCH_*
 
 ### 4. Verify Public Boundary (REQUIRED before push)
 ```bash
@@ -71,7 +72,7 @@ Removes private identifiers:
 1. ✅ No forbidden patterns (keys, IPs, hostnames)
 2. ✅ No runtime state in directories
 3. ✅ No database files
-4. ✅ .env.example exists, .env does not
+grep -r "ORCHESTRATOR\|orchestrators_v2" . --exclude-dir=.git
 5. ✅ .gitignore is comprehensive
 
 ### 5. Git Setup (In ORCHESTRATORS_V2 directory)
@@ -111,7 +112,7 @@ git push -u origin main
 - instance/ runtime state
 - Logs, backups, evidence bundles
 - Cloudflare tunnel configs
-- Absolute paths (/home/jay/...)
+- Absolute paths (/home/USER/...)
 
 ## After Publishing
 
@@ -161,7 +162,7 @@ grep -r "jay\|ORCHESTRATOR\|orchestrators_v2" . --exclude-dir=.git
 
 ## What ChatGPT Said
 
-> "You want **two parallel organisms**: ORCHESTRATOR (private, production, Jay-specific, full power) and ORCHESTRATORS_V2 (public, reproducible, 'bring-your-own-identity,' safe defaults)."
+> "You want **two parallel organisms**: ORCHESTRATOR (private, production, identity-bound, full power) and ORCHESTRATORS_V2 (public, reproducible, 'bring-your-own-identity,' safe defaults)."
 
 > "Because you already have a GitHub remote and you've had size issues: **do not ever put `instance/` under version control in V2**, even 'just for now.' It's the easiest way to accidentally publish someone's private life in pixels."
 

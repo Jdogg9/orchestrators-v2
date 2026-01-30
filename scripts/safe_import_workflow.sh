@@ -3,7 +3,8 @@
 
 set -euo pipefail
 
-V2="/home/jay/nexusstl-web-flask/PUBLIC_VERSION/ORCHESTRATORS_V2"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+V2="$(cd "$SCRIPT_DIR/.." && pwd)"
 cd "$V2"
 
 echo "==[1/6] Confirm we're in ORCHESTRATORS_V2 =="
@@ -30,7 +31,7 @@ git status --porcelain 2>/dev/null || echo "(git not initialized yet - this is O
 echo ""
 echo "---- Potentially sensitive greps (should return nothing scary) ----"
 grep -Rni --binary-files=without-match -E \
-  "JayCyn|Jdogg9|AIza|sk-|BEGIN (RSA|OPENSSH) PRIVATE KEY|tunnel|recall_memory\.db|release_snapshot" \
+  "private_user|private_id|AIza|sk-|BEGIN (RSA|OPENSSH) PRIVATE KEY|tunnel|recall_memory\.db|release_snapshot" \
   . 2>/dev/null || echo "(no sensitive patterns found - GOOD)"
 
 echo ""

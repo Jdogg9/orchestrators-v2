@@ -1,6 +1,6 @@
 # ORCHESTRATORS_V2
 
-[![CI](https://github.com/Jdogg9/orchestrators-v2/actions/workflows/ci.yml/badge.svg)](https://github.com/Jdogg9/orchestrators-v2/actions/workflows/ci.yml)
+[![CI](https://github.com/example/orchestrators-v2/actions/workflows/ci.yml/badge.svg)](https://github.com/example/orchestrators-v2/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 A reproducible, local-first reference implementation of the **Orchestrator** pattern:
@@ -21,7 +21,7 @@ a stable identity + routing + tools + optional memory, designed for *your* machi
 
 ## Project Lineage (v1 → v2)
 
-- **v1 (AIMEE_ORCHESTRATORS)**: Original research/prototype repo that explored the orchestrator pattern in production.
+- **v1 (ORCHESTRATOR_V1)**: Original research/prototype repo that explored the orchestrator pattern in production.
   Private repo containing identity, runtime state, and battle-tested iterations.
 
 - **v2 (ORCHESTRATORS_V2)**: Sanitized, reproducible reference implementation with safe defaults and boundary verification.
@@ -42,7 +42,7 @@ python -m src.server &
 
 # 3. Health check
 curl http://127.0.0.1:8088/health
-# Expected: {"status":"ok","server":"ORCHESTRATORS_V2"}
+# Expected: {"status":"ok","service":"orchestrators_v2"}
 
 # 4. Verify no secrets leaked
 ./scripts/verify_public_boundary.sh
