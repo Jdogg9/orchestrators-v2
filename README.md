@@ -68,6 +68,8 @@ curl http://127.0.0.1:8088/health
 curl http://127.0.0.1:8088/ready
 # Expected: {"status":"ready","service":"orchestrators_v2"}
 
+**Auth policy:** When `ORCH_REQUIRE_BEARER=1`, `/v1/chat/completions` and `/metrics` require a valid `Authorization: Bearer …` token; `/health` and `/ready` remain unauthenticated for local probes.
+
 # 4. Verify no secrets leaked
 ./scripts/verify_public_boundary.sh
 # Expected: ✅ PUBLIC BOUNDARY SAFE (5/5 checks passing)
