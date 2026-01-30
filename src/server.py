@@ -4,6 +4,7 @@ from flask import Flask, request, jsonify
 from dotenv import load_dotenv
 
 from src.orchestrator_memory import evaluate_memory_capture
+from src.llm_provider import get_provider
 from src.tracer import get_tracer
 
 load_dotenv()
@@ -44,7 +45,6 @@ def chat_completions():
     })
     trace_id = trace_handle.trace_id if trace_handle else None
 
-    # Minimal stub: echo last user message. Replace with real routing/provider calls.
     messages = payload.get("messages", [])
     last = next((m for m in reversed(messages) if m.get("role") == "user"), {})
     content = last.get("content", "")
@@ -62,12 +62,31 @@ def chat_completions():
         trace_id=trace_id,
     )
     
+    use_llm = os.getenv("ORCH_LLM_ENABLED", "0") == "1"
+    if use_llm:
+        try:
+            provider = get_provider()
+            llm_response = provider.generate(messages)
+            assistant_content = llm_response.content
+        except Exception as exc:
+            return jsonify({
+                "error": {
+                    "message": f"LLM provider error: {exc}",
+                    "type": "provider_error",
+                    "code": 502,
+                },
+                "memory_decision": memory_decision,
+            }), 502
+    else:
+        # Minimal stub: echo last user message. Replace with real routing/provider calls.
+        assistant_content = f"[ORCHESTRATORS_V2 stub] You said: {content}"
+
     return jsonify({
         "id": "orch_v2_stub",
         "object": "chat.completion",
         "choices": [{
             "index": 0,
-            "message": {"role": "assistant", "content": f"[ORCHESTRATORS_V2 stub] You said: {content}"},
+            "message": {"role": "assistant", "content": assistant_content},
             "finish_reason": "stop"
         }],
         "memory_decision": memory_decision,

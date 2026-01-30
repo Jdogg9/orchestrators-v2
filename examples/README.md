@@ -16,8 +16,8 @@ All examples follow the 5 core principles:
 **File**: [`toy_orchestrator.py`](toy_orchestrator.py)
 
 A complete, working orchestrator in ~250 lines demonstrating:
-- **2 tools**: Calculator (math eval), Echo (message repeat)
-- **1 router**: Keyword-based intent detection
+- **2 tools**: Calculator (math eval), Echo (message repeat) via `ToolRegistry`
+- **1 router**: Rule-based intent detection via `RuleRouter`
 - **1 memory**: Bounded conversation history (max 10 messages)
 - **1 loop**: Orchestrate → Route → Execute → Respond
 

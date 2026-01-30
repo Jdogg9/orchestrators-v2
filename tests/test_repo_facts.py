@@ -31,6 +31,7 @@ def test_repo_facts_block_matches_expected():
         "- **Server routes**: `/health`, `/echo`, `/v1/chat/completions`",
         "- **Default bind**: `ORCH_PORT=8088` (local-only `127.0.0.1`)",
         "- **Auth flags**: `ORCH_REQUIRE_BEARER`, `ORCH_BEARER_TOKEN`",
+        "- **LLM flags**: `ORCH_LLM_ENABLED`, `ORCH_LLM_PROVIDER`, `ORCH_OLLAMA_URL`, `ORCH_MODEL_CHAT`",
         "- **Trace flags**: `ORCH_TRACE_ENABLED`, `ORCH_TRACE_DB_PATH`",
         "- **Memory flags**: `ORCH_MEMORY_ENABLED`, `ORCH_MEMORY_CAPTURE_ENABLED`, `ORCH_MEMORY_WRITE_POLICY`, `ORCH_MEMORY_CAPTURE_TTL_MINUTES`, `ORCH_MEMORY_DB_PATH`",
         "- **SQLite tables**: `traces`, `trace_steps`, `memory_candidates`",
@@ -55,6 +56,7 @@ def test_repo_facts_taxonomy_matches_memory_module():
 
 def test_repo_facts_routes_match_server():
     os.environ["ORCH_REQUIRE_BEARER"] = "0"
+    os.environ["ORCH_LLM_ENABLED"] = "0"
     from src import server
     importlib.reload(server)
 

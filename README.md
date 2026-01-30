@@ -26,6 +26,7 @@ a stable identity + routing + tools + optional memory, designed for *your* machi
 - **Server routes**: `/health`, `/echo`, `/v1/chat/completions`
 - **Default bind**: `ORCH_PORT=8088` (local-only `127.0.0.1`)
 - **Auth flags**: `ORCH_REQUIRE_BEARER`, `ORCH_BEARER_TOKEN`
+- **LLM flags**: `ORCH_LLM_ENABLED`, `ORCH_LLM_PROVIDER`, `ORCH_OLLAMA_URL`, `ORCH_MODEL_CHAT`
 - **Trace flags**: `ORCH_TRACE_ENABLED`, `ORCH_TRACE_DB_PATH`
 - **Memory flags**: `ORCH_MEMORY_ENABLED`, `ORCH_MEMORY_CAPTURE_ENABLED`, `ORCH_MEMORY_WRITE_POLICY`, `ORCH_MEMORY_CAPTURE_TTL_MINUTES`, `ORCH_MEMORY_DB_PATH`
 - **SQLite tables**: `traces`, `trace_steps`, `memory_candidates`
@@ -132,6 +133,8 @@ Server runs on `http://127.0.0.1:8088` with OpenAI-compatible shape (optional).
 - [Operational Philosophy](docs/OPERATIONAL_PHILOSOPHY.md) - **Why** we built it this way (bounded memory, receipts, rehearsals, defaults off, automation)
 - [Architecture](docs/ARCHITECTURE.md) - Layer design (API → orchestrator → tools → persistence)
 - [Threat Model](docs/THREAT_MODEL.md) - Security stance and mitigations
+- [Routing & Tools](docs/ROUTING_AND_TOOLS.md) - Tool registry + rule routing patterns
+- [Production Readiness](docs/PRODUCTION_READINESS.md) - Gaps and hardening checklist
 - [Public Release Guide](docs/PUBLIC_RELEASE_GUIDE.md) - Maintenance workflow
 
 ## Contributing

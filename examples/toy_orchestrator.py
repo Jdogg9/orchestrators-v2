@@ -19,8 +19,15 @@ Philosophy alignment:
 """
 
 import json
+import os
+import sys
 from typing import Dict, List, Any
 from datetime import datetime
+
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
+
+from src.router import RuleRouter, Rule
+from src.tool_registry import ToolRegistry, ToolSpec
 
 
 class ToyMemory:
@@ -47,64 +54,19 @@ class ToyMemory:
         return f"{len(self.messages)}/{self.max_messages} messages"
 
 
-class ToyTools:
-    """Simple tools: calculator and echo"""
-    
-    @staticmethod
-    def calculator(expression: str) -> str:
-        """Evaluate math expression (UNSAFE - toy only!)"""
-        try:
-            # WARNING: eval() is dangerous - toy example only!
-            result = eval(expression, {"__builtins__": {}}, {})
-            return f"Result: {result}"
-        except Exception as e:
-            return f"Error: {str(e)}"
-    
-    @staticmethod
-    def echo(message: str) -> str:
-        """Echo message back"""
-        return f"Echo: {message}"
-    
-    @staticmethod
-    def list_tools() -> List[str]:
-        """Available tools"""
-        return ["calculator", "echo"]
+def calculator(expression: str) -> str:
+    """Evaluate math expression (UNSAFE - toy only!)"""
+    try:
+        # WARNING: eval() is dangerous - toy example only!
+        result = eval(expression, {"__builtins__": {}}, {})
+        return f"Result: {result}"
+    except Exception as e:
+        return f"Error: {str(e)}"
 
 
-class ToyRouter:
-    """Intent detection (keyword-based - toy only!)"""
-    
-    @staticmethod
-    def route(user_input: str) -> Dict[str, Any]:
-        """Determine which tool to call"""
-        lower_input = user_input.lower()
-        
-        # Simple keyword routing
-        if any(word in lower_input for word in ["calculate", "math", "+", "-", "*", "/"]):
-            # Extract expression (toy heuristic)
-            expression = user_input.split("calculate")[-1].strip() if "calculate" in lower_input else user_input
-            return {
-                "tool": "calculator",
-                "params": {"expression": expression},
-                "confidence": 0.8
-            }
-        
-        elif any(word in lower_input for word in ["echo", "repeat", "say"]):
-            # Extract message
-            message = user_input.split("echo")[-1].strip() if "echo" in lower_input else user_input
-            return {
-                "tool": "echo",
-                "params": {"message": message},
-                "confidence": 0.9
-            }
-        
-        else:
-            # No tool needed - direct response
-            return {
-                "tool": None,
-                "params": {},
-                "confidence": 0.0
-            }
+def echo(message: str) -> str:
+    """Echo message back"""
+    return f"Echo: {message}"
 
 
 class ToyOrchestrator:
@@ -112,8 +74,37 @@ class ToyOrchestrator:
     
     def __init__(self, memory_size: int = 10):
         self.memory = ToyMemory(max_messages=memory_size)
-        self.tools = ToyTools()
-        self.router = ToyRouter()
+        self.tools = ToolRegistry()
+        self.tools.register(ToolSpec(name="calculator", description="Evaluate math expression", handler=calculator))
+        self.tools.register(ToolSpec(name="echo", description="Echo message back", handler=echo))
+
+        self.router = RuleRouter()
+        self.router.add_rule(
+            Rule(
+                tool="calculator",
+                predicate=lambda text: any(word in text.lower() for word in ["calculate", "math", "+", "-", "*", "/"]),
+                param_builder=lambda text: {
+                    "expression": text.split("calculate")[-1].strip()
+                    if "calculate" in text.lower()
+                    else text
+                },
+                confidence=0.8,
+                reason="keyword_math",
+            )
+        )
+        self.router.add_rule(
+            Rule(
+                tool="echo",
+                predicate=lambda text: any(word in text.lower() for word in ["echo", "repeat", "say"]),
+                param_builder=lambda text: {
+                    "message": text.split("echo")[-1].strip()
+                    if "echo" in text.lower()
+                    else text
+                },
+                confidence=0.9,
+                reason="keyword_echo",
+            )
+        )
         self.trace: List[Dict[str, Any]] = []
     
     def process(self, user_input: str) -> str:
@@ -133,26 +124,23 @@ class ToyOrchestrator:
         
         # Step 2: Route
         routing_decision = self.router.route(user_input)
-        self._add_trace("routing", routing_decision)
-        print(f"  🧭 [Router] Tool={routing_decision['tool']}, Confidence={routing_decision['confidence']}")
+        self._add_trace("routing", {
+            "tool": routing_decision.tool,
+            "params": routing_decision.params,
+            "confidence": routing_decision.confidence,
+            "reason": routing_decision.reason,
+        })
+        print(f"  🧭 [Router] Tool={routing_decision.tool}, Confidence={routing_decision.confidence}")
         
         # Step 3: Execute tool (if routed)
-        if routing_decision["tool"]:
-            tool_name = routing_decision["tool"]
-            params = routing_decision["params"]
-            
-            # Call tool
-            if tool_name == "calculator":
-                tool_result = self.tools.calculator(params["expression"])
-            elif tool_name == "echo":
-                tool_result = self.tools.echo(params["message"])
-            else:
-                tool_result = f"Unknown tool: {tool_name}"
-            
+        if routing_decision.tool:
+            tool_name = routing_decision.tool
+            params = routing_decision.params
+            tool_result = self.tools.execute(tool_name, **params)
             self._add_trace("tool_execution", {"tool": tool_name, "params": params, "result": tool_result})
             print(f"  🔧 [Tool] {tool_name}() → {tool_result}")
-            
-            response = tool_result
+
+            response = tool_result.get("result") if tool_result.get("status") == "ok" else tool_result.get("error")
         else:
             # Direct response (no tool)
             response = f"I heard: '{user_input}'. Try asking me to calculate something or echo a message!"

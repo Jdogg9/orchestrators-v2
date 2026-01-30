@@ -41,6 +41,9 @@ Keep reviews factual: separate shipped layout from suggested extensions.
 - `src/memory.py` - Memory capture logic + taxonomy
 - `src/orchestrator_memory.py` - Memory decision evaluation
 - `src/tracer.py` - Trace store + steps
+- `src/tool_registry.py` - Minimal tool registry
+- `src/router.py` - Rule-based router
+- `src/llm_provider.py` - Optional local LLM provider
 - `examples/` - Teaching examples
 - `tests/` - Test suite (boundary + memory taxonomy + server)
 
