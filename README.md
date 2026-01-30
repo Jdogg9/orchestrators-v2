@@ -1,7 +1,9 @@
 # ORCHESTRATORS_V2
 
-[![CI](https://github.com/example/orchestrators-v2/actions/workflows/ci.yml/badge.svg)](https://github.com/example/orchestrators-v2/actions/workflows/ci.yml)
+[![CI](https://github.com/Jdogg9/orchestrators-v2/actions/workflows/ci.yml/badge.svg)](https://github.com/Jdogg9/orchestrators-v2/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
+✅ CI enforces public boundary + tests on every push/PR.
 
 A reproducible, local-first reference implementation of the **Orchestrator** pattern:
 a stable identity + routing + tools + optional memory, designed for *your* machine and *your* rules.

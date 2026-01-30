@@ -21,6 +21,18 @@ All contributions must pass boundary verification:
 ```
 This ensures no secrets, runtime state, or private patterns leak into the public repo.
 
+### 3. Public Boundary Contract (Non-Negotiable)
+**Boundary check must pass.** Do not commit runtime artifacts or identity strings.
+
+**Rules:**
+- **No runtime artifacts**: never commit `instance/`, `logs/`, `reports/`, `*.db`, `*.sqlite`, or test output.
+- **No absolute paths**: use `$PROJECT_ROOT` or relative paths in docs/scripts.
+- **No identity strings**: replace real names/handles with placeholders.
+
+**CI gates** (enforced on every PR/push):
+- `./scripts/verify_public_boundary.sh`
+- `pytest -q`
+
 ## Contribution Types
 
 ### 🐛 Bug Reports
