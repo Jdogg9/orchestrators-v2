@@ -12,8 +12,8 @@ PUBLIC="$(cd "$SCRIPT_DIR/.." && pwd)"
 echo "[*] Sanitizing ORCHESTRATORS_V2 (removing private identifiers)"
 
 HOME_DIR="${HOME}"
-PROJECT_ROOT='$PROJECT_ROOT'
-BACKUP_DIR='$BACKUP_DIR'
+PROJECT_ROOT="\$PROJECT_ROOT"
+BACKUP_DIR="\$BACKUP_DIR"
 
 # SANITIZATION RULES (private → public)
 declare -A REPLACEMENTS=(

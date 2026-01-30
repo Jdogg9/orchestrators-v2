@@ -52,6 +52,7 @@ safe_copy() {
     for pattern in "${BLOCKLIST_PATTERNS[@]}"; do
         if [[ "$src" == *"$pattern"* ]]; then
             echo "🛑 BLOCKED: $src (matches blocklist pattern: $pattern)"
+            blocked=$((blocked + 1))
             return 1
         fi
     done
@@ -92,5 +93,5 @@ done < "$MANIFEST"
 
 echo ""
 echo "[+] Mirror import complete."
-echo "    Copied: $copied | Skipped: $skipped"
+echo "    Copied: $copied | Skipped: $skipped | Blocked: $blocked"
 echo "    Next: Run sanitize_strings.sh to remove private references"
