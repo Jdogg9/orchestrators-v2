@@ -33,6 +33,22 @@ This ensures no secrets, runtime state, or private patterns leak into the public
 - `./scripts/verify_public_boundary.sh`
 - `pytest -q`
 
+### 4. Repository Layout (Current vs. Recommended)
+Keep reviews factual: separate shipped layout from suggested extensions.
+
+**Current shipped structure:**
+- `src/server.py` - Flask API stub (routes + memory capture decision)
+- `src/memory.py` - Memory capture logic + taxonomy
+- `src/orchestrator_memory.py` - Memory decision evaluation
+- `src/tracer.py` - Trace store + steps
+- `examples/` - Teaching examples
+- `tests/` - Test suite (boundary + memory taxonomy + server)
+
+**Recommended extension structure (optional, not shipped by default):**
+- `src/routers/` - Model selection logic
+- `src/tools/` - Custom tool implementations
+- `src/memory/` - Additional memory backends
+
 ## Contribution Types
 
 ### 🐛 Bug Reports
@@ -167,9 +183,9 @@ def save_everything(data):
 ## Extension Points
 
 ### Safe Areas to Extend
-- **Tools** (`src/tools/`): Add new tools with bounded execution
-- **Routers** (`src/routers/`): Add new routing logic
-- **Memory** (`src/memory/`): Add new memory backends (with TTL!)
+- **Tools** (`src/tools/`, optional): Add new tools with bounded execution
+- **Routers** (`src/routers/`, optional): Add new routing logic
+- **Memory** (`src/memory/`, optional): Add new memory backends (with TTL!)
 - **Tests** (`tests/`): More tests = better
 - **Docs** (`docs/`): Clarity improvements always welcome
 

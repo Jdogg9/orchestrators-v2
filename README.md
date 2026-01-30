@@ -21,6 +21,21 @@ a stable identity + routing + tools + optional memory, designed for *your* machi
 - A hosted service (runs locally only)
 - A magic model (requires Ollama/OpenAI/etc.)
 
+## Repo Facts (checked by tests)
+<!-- REPO_FACTS_START -->
+- **Server routes**: `/health`, `/echo`, `/v1/chat/completions`
+- **Default bind**: `ORCH_PORT=8088` (local-only `127.0.0.1`)
+- **Auth flags**: `ORCH_REQUIRE_BEARER`, `ORCH_BEARER_TOKEN`
+- **Trace flags**: `ORCH_TRACE_ENABLED`, `ORCH_TRACE_DB_PATH`
+- **Memory flags**: `ORCH_MEMORY_ENABLED`, `ORCH_MEMORY_CAPTURE_ENABLED`, `ORCH_MEMORY_WRITE_POLICY`, `ORCH_MEMORY_CAPTURE_TTL_MINUTES`, `ORCH_MEMORY_DB_PATH`
+- **SQLite tables**: `traces`, `trace_steps`, `memory_candidates`
+- **Memory decision taxonomy**: `allow:explicit_intent`, `allow:dedupe_update`, `allow:capture_only`, `deny:feature_disabled`, `deny:policy_write_disabled`, `deny:no_explicit_intent`, `deny:scrubbed_too_short`, `deny:sensitive_content`, `deny:error`
+- **Toy example**: `examples/toy_orchestrator.py` uses `eval()` and includes `WARNING: eval() is dangerous - toy example only!`
+- **Non-goals**: not a hosted service; not a turnkey agent; not a production tool registry/router; no default tool execution in core (stub only)
+<!-- REPO_FACTS_END -->
+
+**Note on `deny:sensitive_content`**: “Sensitive content” includes secret-like patterns (keys/tokens), credentials, and other disallowed persistence classes.
+
 ## Project Lineage (v1 → v2)
 
 - **v1 (ORCHESTRATOR_V1)**: Original research/prototype repo that explored the orchestrator pattern in production.
@@ -74,6 +89,8 @@ python examples/toy_orchestrator.py
 
 **Read more**: [examples/README.md](examples/README.md) for architecture walkthrough.
 
+⚠️ **Toy warning**: The calculator uses `eval()` by design for teaching. Do not reuse it in production. See [docs/SAFE_CALCULATOR.md](docs/SAFE_CALCULATOR.md) for an AST-based alternative.
+
 ## Example Orchestrator Loop
 
 ```python
@@ -126,11 +143,17 @@ We welcome contributions that align with our [5 core principles](docs/OPERATIONA
 2. Read [Operational Philosophy](docs/OPERATIONAL_PHILOSOPHY.md) - Understand the "why"
 3. Run boundary checks: `./scripts/verify_public_boundary.sh`
 
-**Key extension points**:
-- `src/router.py` - Model selection logic
-- `src/tools/` - Custom tool implementations  
-- `src/memory.py` - RAG/memory patterns (optional)
-- `examples/` - Add more teaching examples
+**Current shipped structure**:
+- `src/server.py` - Flask API stub (routes + memory capture decision)
+- `src/memory.py` - Memory capture logic + taxonomy
+- `src/orchestrator_memory.py` - Memory decision evaluation
+- `src/tracer.py` - Trace store + steps
+- `examples/` - Teaching examples
+
+**Recommended extension structure (optional, not shipped by default)**:
+- `src/routers/` - Model selection logic
+- `src/tools/` - Custom tool implementations
+- `src/memory/` - Additional memory backends
 
 **Philosophy alignment required**: Feature requests must answer [5 questions](.github/ISSUE_TEMPLATE/feature_request.md) about bounded memory, receipts, rehearsal, defaults, and automation.
 

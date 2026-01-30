@@ -21,6 +21,9 @@ A complete, working orchestrator in ~250 lines demonstrating:
 - **1 memory**: Bounded conversation history (max 10 messages)
 - **1 loop**: Orchestrate → Route → Execute → Respond
 
+⚠️ **Toy warning**: The calculator uses `eval()` on purpose. It includes a warning banner in code. Do not reuse this in production.
+For a safe alternative, see [docs/SAFE_CALCULATOR.md](../docs/SAFE_CALCULATOR.md).
+
 ### Run Interactive Mode
 ```bash
 python examples/toy_orchestrator.py

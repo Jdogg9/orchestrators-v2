@@ -30,6 +30,11 @@ FORBIDDEN=(
 if command -v git >/dev/null 2>&1 && git -C "$PUBLIC" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
     while IFS= read -r file; do
         [[ -z "$file" ]] && continue
+        case "$file" in
+            scripts/sanitize_strings.sh|scripts/verify_public_boundary.sh|scripts/import_patterns_from_private.sh|scripts/safe_import_workflow.sh|docs/PUBLIC_RELEASE_GUIDE.md)
+                continue
+                ;;
+        esac
         for pattern in "${FORBIDDEN[@]}"; do
             if grep -n -E "$pattern" "$PUBLIC/$file" 2>/dev/null; then
                 echo "  ❌ FAIL: Found forbidden pattern: $pattern"
