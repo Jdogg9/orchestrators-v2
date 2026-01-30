@@ -28,11 +28,12 @@ def test_repo_facts_block_matches_expected():
     lines = _read_repo_facts_block(readme_path)
 
     expected_lines = [
-        "- **Server routes**: `/health`, `/ready`, `/echo`, `/v1/chat/completions`",
+        "- **Server routes**: `/health`, `/ready`, `/metrics`, `/echo`, `/v1/chat/completions`",
         "- **Default bind**: `ORCH_PORT=8088`, `ORCH_HOST=127.0.0.1`",
         "- **API flag**: `ORCH_ENABLE_API`",
         "- **Auth flags**: `ORCH_REQUIRE_BEARER`, `ORCH_BEARER_TOKEN`",
         "- **LLM flags**: `ORCH_LLM_ENABLED`, `ORCH_LLM_PROVIDER`, `ORCH_OLLAMA_URL`, `ORCH_MODEL_CHAT`, `ORCH_LLM_TIMEOUT_SEC`, `ORCH_LLM_HEALTH_TIMEOUT_SEC`",
+        "- **Safety flags**: `ORCH_MAX_REQUEST_BYTES`, `ORCH_RATE_LIMIT_ENABLED`, `ORCH_RATE_LIMIT`, `ORCH_LOG_JSON`, `ORCH_LOG_LEVEL`, `ORCH_METRICS_ENABLED`",
         "- **Trace flags**: `ORCH_TRACE_ENABLED`, `ORCH_TRACE_DB_PATH`",
         "- **Memory flags**: `ORCH_MEMORY_ENABLED`, `ORCH_MEMORY_CAPTURE_ENABLED`, `ORCH_MEMORY_WRITE_POLICY`, `ORCH_MEMORY_CAPTURE_TTL_MINUTES`, `ORCH_MEMORY_DB_PATH`",
         "- **SQLite tables**: `traces`, `trace_steps`, `memory_candidates`",
@@ -59,6 +60,7 @@ def test_repo_facts_routes_match_server():
     os.environ["ORCH_REQUIRE_BEARER"] = "0"
     os.environ["ORCH_LLM_ENABLED"] = "0"
     os.environ["ORCH_ENABLE_API"] = "1"
+    os.environ["ORCH_METRICS_ENABLED"] = "1"
     from src import server
     importlib.reload(server)
 
@@ -68,6 +70,9 @@ def test_repo_facts_routes_match_server():
 
         ready = client.get("/ready")
         assert ready.status_code == 200
+
+        metrics = client.get("/metrics")
+        assert metrics.status_code == 200
 
         echo = client.post("/echo", json={"message": "ok"})
         assert echo.status_code == 200

@@ -7,6 +7,10 @@ This repo is a **reference implementation**. Below is a short, concrete checklis
 - **Deployment artifacts**: Dockerfile, docker-compose.yml, and a systemd unit template.
 - **App server**: Gunicorn config for production process management.
 - **Readiness endpoint**: `/ready` gate for dependency health.
+- **Metrics endpoint**: `/metrics` for Prometheus scraping (toggleable).
+- **Request controls**: Max request size and basic rate limiting.
+   - **Note**: Rate limiting defaults to in-memory storage (best-effort). Configure a real backend (e.g., Redis) for production.
+- **Structured logs**: JSON logging with request IDs and latency.
 - **Secret scan in CI**: `scripts/secret_scan.sh` runs on every push/PR.
 
 ## Gaps (Intentional)
@@ -34,6 +38,7 @@ This repo is a **reference implementation**. Below is a short, concrete checklis
 4. **Observability**
    - Emit structured traces to a centralized system.
    - Add request IDs, latency percentiles, and error budgets.
+   - Wire `/metrics` into a dashboard and alerting pipeline.
 
 5. **Security automation**
    - Add SAST/DAST and secret scanning in CI.

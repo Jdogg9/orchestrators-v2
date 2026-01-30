@@ -28,6 +28,15 @@ def test_ready_endpoint_exists():
         response = client.get('/ready')
         assert response.status_code in (200, 503)
 
+
+def test_metrics_endpoint_exists():
+    """Verify metrics endpoint is defined."""
+    from src.server import app
+
+    with app.test_client() as client:
+        response = client.get('/metrics')
+        assert response.status_code in (200, 503)
+
 def test_echo_endpoint():
     """Verify echo endpoint works."""
     from src.server import app

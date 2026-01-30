@@ -23,11 +23,12 @@ a stable identity + routing + tools + optional memory, designed for *your* machi
 
 ## Repo Facts (checked by tests)
 <!-- REPO_FACTS_START -->
-- **Server routes**: `/health`, `/ready`, `/echo`, `/v1/chat/completions`
+- **Server routes**: `/health`, `/ready`, `/metrics`, `/echo`, `/v1/chat/completions`
 - **Default bind**: `ORCH_PORT=8088`, `ORCH_HOST=127.0.0.1`
 - **API flag**: `ORCH_ENABLE_API`
 - **Auth flags**: `ORCH_REQUIRE_BEARER`, `ORCH_BEARER_TOKEN`
 - **LLM flags**: `ORCH_LLM_ENABLED`, `ORCH_LLM_PROVIDER`, `ORCH_OLLAMA_URL`, `ORCH_MODEL_CHAT`, `ORCH_LLM_TIMEOUT_SEC`, `ORCH_LLM_HEALTH_TIMEOUT_SEC`
+- **Safety flags**: `ORCH_MAX_REQUEST_BYTES`, `ORCH_RATE_LIMIT_ENABLED`, `ORCH_RATE_LIMIT`, `ORCH_LOG_JSON`, `ORCH_LOG_LEVEL`, `ORCH_METRICS_ENABLED`
 - **Trace flags**: `ORCH_TRACE_ENABLED`, `ORCH_TRACE_DB_PATH`
 - **Memory flags**: `ORCH_MEMORY_ENABLED`, `ORCH_MEMORY_CAPTURE_ENABLED`, `ORCH_MEMORY_WRITE_POLICY`, `ORCH_MEMORY_CAPTURE_TTL_MINUTES`, `ORCH_MEMORY_DB_PATH`
 - **SQLite tables**: `traces`, `trace_steps`, `memory_candidates`
@@ -70,6 +71,9 @@ curl http://127.0.0.1:8088/ready
 # 4. Verify no secrets leaked
 ./scripts/verify_public_boundary.sh
 # Expected: ✅ PUBLIC BOUNDARY SAFE (5/5 checks passing)
+
+# 5. Full receipts bundle (boundary + secrets + tests)
+./scripts/verify.sh
 ```
 
 ## Try the Toy Orchestrator (5 minutes)
