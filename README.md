@@ -23,10 +23,11 @@ a stable identity + routing + tools + optional memory, designed for *your* machi
 
 ## Repo Facts (checked by tests)
 <!-- REPO_FACTS_START -->
-- **Server routes**: `/health`, `/echo`, `/v1/chat/completions`
-- **Default bind**: `ORCH_PORT=8088` (local-only `127.0.0.1`)
+- **Server routes**: `/health`, `/ready`, `/echo`, `/v1/chat/completions`
+- **Default bind**: `ORCH_PORT=8088`, `ORCH_HOST=127.0.0.1`
+- **API flag**: `ORCH_ENABLE_API`
 - **Auth flags**: `ORCH_REQUIRE_BEARER`, `ORCH_BEARER_TOKEN`
-- **LLM flags**: `ORCH_LLM_ENABLED`, `ORCH_LLM_PROVIDER`, `ORCH_OLLAMA_URL`, `ORCH_MODEL_CHAT`
+- **LLM flags**: `ORCH_LLM_ENABLED`, `ORCH_LLM_PROVIDER`, `ORCH_OLLAMA_URL`, `ORCH_MODEL_CHAT`, `ORCH_LLM_TIMEOUT_SEC`, `ORCH_LLM_HEALTH_TIMEOUT_SEC`
 - **Trace flags**: `ORCH_TRACE_ENABLED`, `ORCH_TRACE_DB_PATH`
 - **Memory flags**: `ORCH_MEMORY_ENABLED`, `ORCH_MEMORY_CAPTURE_ENABLED`, `ORCH_MEMORY_WRITE_POLICY`, `ORCH_MEMORY_CAPTURE_TTL_MINUTES`, `ORCH_MEMORY_DB_PATH`
 - **SQLite tables**: `traces`, `trace_steps`, `memory_candidates`
@@ -61,6 +62,10 @@ python -m src.server &
 # 3. Health check
 curl http://127.0.0.1:8088/health
 # Expected: {"status":"ok","service":"orchestrators_v2"}
+
+# 3b. Readiness check
+curl http://127.0.0.1:8088/ready
+# Expected: {"status":"ready","service":"orchestrators_v2"}
 
 # 4. Verify no secrets leaked
 ./scripts/verify_public_boundary.sh
@@ -120,6 +125,21 @@ python -m src.server
 ```
 
 Server runs on `http://127.0.0.1:8088` with OpenAI-compatible shape (optional).
+
+## Quickstart (Docker)
+```bash
+cp .env.example .env
+docker compose up --build
+```
+
+Server runs on `http://127.0.0.1:8088` and stays local-only by default.
+
+## Deployment Artifacts (Hardened Defaults)
+
+- Dockerfile + compose: `Dockerfile`, `docker-compose.yml`
+- Gunicorn config: `gunicorn.conf.py`
+- Systemd unit template: `deploy/systemd/orchestrators-v2.service`
+- Secret scan (CI): `scripts/secret_scan.sh`
 
 ## Security Model (Defaults)
 

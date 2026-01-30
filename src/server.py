@@ -1,6 +1,8 @@
 import hashlib
 import os
-from flask import Flask, request, jsonify
+import time
+import uuid
+from flask import Flask, request, jsonify, g
 from dotenv import load_dotenv
 
 from src.orchestrator_memory import evaluate_memory_capture
@@ -11,6 +13,20 @@ load_dotenv()
 
 app = Flask(__name__)
 
+
+@app.before_request
+def start_request():
+    g.request_id = request.headers.get("X-Request-ID") or str(uuid.uuid4())
+    g.request_start = time.time()
+
+
+@app.after_request
+def finalize_request(response):
+    request_id = getattr(g, "request_id", None)
+    if request_id:
+        response.headers["X-Request-ID"] = request_id
+    return response
+
 def require_bearer():
     if os.getenv("ORCH_REQUIRE_BEARER", "0") != "1":
         return True, None
@@ -20,9 +36,31 @@ def require_bearer():
         return False, {"error": {"message": "Unauthorized", "type": "auth_error", "code": 401}}
     return True, None
 
+
+def _api_enabled() -> bool:
+    return os.getenv("ORCH_ENABLE_API", "1") == "1"
+
 @app.get("/health")
 def health():
     return {"status": "ok", "service": "orchestrators_v2"}
+
+
+@app.get("/ready")
+def ready():
+    if not _api_enabled():
+        return {"status": "disabled", "service": "orchestrators_v2"}, 503
+
+    if os.getenv("ORCH_LLM_ENABLED", "0") == "1":
+        provider = get_provider()
+        ok, reason = provider.health_check()
+        if not ok:
+            return {
+                "status": "unready",
+                "service": "orchestrators_v2",
+                "reason": reason,
+            }, 503
+
+    return {"status": "ready", "service": "orchestrators_v2"}
 
 @app.post("/echo")
 def echo():
@@ -33,11 +71,13 @@ def echo():
 
 @app.post("/v1/chat/completions")
 def chat_completions():
+    if not _api_enabled():
+        return jsonify({"error": {"message": "API disabled", "type": "service_unavailable", "code": 503}}), 503
     ok, err = require_bearer()
     if not ok:
         return jsonify(err), 401
     
-    payload = request.get_json(force=True, silent=False)
+    payload = request.get_json(force=True, silent=False) or {}
     tracer = get_tracer()
     trace_handle = tracer.start_trace({
         "route": "/v1/chat/completions",
@@ -89,9 +129,11 @@ def chat_completions():
             "message": {"role": "assistant", "content": assistant_content},
             "finish_reason": "stop"
         }],
+        "request_id": trace_id or getattr(g, "request_id", None),
         "memory_decision": memory_decision,
     })
 
 if __name__ == "__main__":
     port = int(os.getenv("ORCH_PORT", "8088"))
-    app.run(host="127.0.0.1", port=port, debug=False)
+    host = os.getenv("ORCH_HOST", "127.0.0.1")
+    app.run(host=host, port=port, debug=False)

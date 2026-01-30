@@ -26,6 +26,10 @@ jobs:
         run: |
           ./scripts/verify_public_boundary.sh
 
+      - name: Secret scan (repo-hardening)
+        run: |
+          ./scripts/secret_scan.sh
+
       - name: Repo Facts fast gate
         run: |
           pytest -q -k "repo_facts"

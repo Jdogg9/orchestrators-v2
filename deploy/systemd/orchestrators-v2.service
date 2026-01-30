@@ -1,0 +1,15 @@
+[Unit]
+Description=ORCHESTRATORS_V2 service
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=/opt/orchestrators-v2
+EnvironmentFile=/opt/orchestrators-v2/.env
+ExecStart=/opt/orchestrators-v2/.venv/bin/gunicorn -c /opt/orchestrators-v2/gunicorn.conf.py src.server:app
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

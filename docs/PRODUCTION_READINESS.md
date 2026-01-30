@@ -2,13 +2,20 @@
 
 This repo is a **reference implementation**. Below is a short, concrete checklist for production hardening.
 
+## Shipped Hardening (Now Included)
+
+- **Deployment artifacts**: Dockerfile, docker-compose.yml, and a systemd unit template.
+- **App server**: Gunicorn config for production process management.
+- **Readiness endpoint**: `/ready` gate for dependency health.
+- **Secret scan in CI**: `scripts/secret_scan.sh` runs on every push/PR.
+
 ## Gaps (Intentional)
 
 - **Tool execution policy**: Only minimal registry exists. No policy engine, quotas, or sandbox.
 - **Advanced routing**: Rule router only; no planning, cost tracking, or multi-agent coordination.
 - **Storage scaling**: SQLite is default; no distributed tracing or replicated storage.
-- **Ops surface**: No deployment manifests, SLO dashboards, or incident runbooks.
-- **Security controls**: Boundary + tests only; no static analysis pipeline or secret scanning service.
+- **Ops surface**: No SLO dashboards, incident runbooks, or live paging integration.
+- **Security controls**: Boundary + tests only; no SAST/DAST integration beyond local secret scan.
 
 ## Recommended Hardening Steps
 
