@@ -15,7 +15,7 @@ echo ""
 
 EXIT_CODE=0
 
-# Check 1: No forbidden patterns in code
+# Check 1: No forbidden patterns in tracked files
 echo "[1/5] Checking for forbidden patterns..."
 HOME_DIR="${HOME}"
 FORBIDDEN=(
@@ -27,27 +27,43 @@ FORBIDDEN=(
     "cloudflared"
 )
 
-for pattern in "${FORBIDDEN[@]}"; do
-    if grep -r -E "$pattern" "$PUBLIC" \
-        --exclude-dir=.git \
-        --exclude-dir=.venv \
-        --exclude-dir=venv \
-        --exclude-dir=__pycache__ \
-        --exclude-dir=instance \
-        --exclude-dir=reports \
-        --exclude="*.pyc" \
-        --exclude=sanitize_strings.sh \
-        --exclude=verify_public_boundary.sh \
-        --exclude=import_patterns_from_private.sh \
-        --exclude=safe_import_workflow.sh \
-        --exclude=PUBLIC_RELEASE_GUIDE.md \
-        --exclude=.gitignore \
-        2>/dev/null; then
-        echo "  ❌ FAIL: Found forbidden pattern: $pattern"
-        EXIT_CODE=1
-    fi
-done
-[[ $EXIT_CODE -eq 0 ]] && echo "  ✅ PASS: No forbidden patterns found (operational files excluded)"
+if command -v git >/dev/null 2>&1 && git -C "$PUBLIC" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+    while IFS= read -r file; do
+        [[ -z "$file" ]] && continue
+        for pattern in "${FORBIDDEN[@]}"; do
+            if grep -n -E "$pattern" "$PUBLIC/$file" 2>/dev/null; then
+                echo "  ❌ FAIL: Found forbidden pattern: $pattern"
+                EXIT_CODE=1
+            fi
+        done
+    done < <(git -C "$PUBLIC" ls-files)
+else
+    for pattern in "${FORBIDDEN[@]}"; do
+        if grep -r -E "$pattern" "$PUBLIC" \
+            --exclude-dir=.git \
+            --exclude-dir=.venv \
+            --exclude-dir=venv \
+            --exclude-dir=__pycache__ \
+            --exclude-dir=instance \
+            --exclude-dir=reports \
+            --exclude-dir=logs \
+            --exclude="*.pyc" \
+            --exclude="*.db" \
+            --exclude="*.sqlite" \
+            --exclude=*.sqlite3 \
+            --exclude=sanitize_strings.sh \
+            --exclude=verify_public_boundary.sh \
+            --exclude=import_patterns_from_private.sh \
+            --exclude=safe_import_workflow.sh \
+            --exclude=PUBLIC_RELEASE_GUIDE.md \
+            --exclude=.gitignore \
+            2>/dev/null; then
+            echo "  ❌ FAIL: Found forbidden pattern: $pattern"
+            EXIT_CODE=1
+        fi
+    done
+fi
+[[ $EXIT_CODE -eq 0 ]] && echo "  ✅ PASS: No forbidden patterns found (tracked files only)"
 
 # Check 2: No runtime state directories
 echo ""
