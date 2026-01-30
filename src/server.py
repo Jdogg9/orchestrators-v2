@@ -1,9 +1,14 @@
 import hashlib
+import logging
 import os
 import time
 import uuid
-from flask import Flask, request, jsonify, g
+import json
+from flask import Flask, request, jsonify, g, Response
 from dotenv import load_dotenv
+from prometheus_client import Counter, Histogram, generate_latest, CONTENT_TYPE_LATEST, CollectorRegistry
+from flask_limiter import Limiter
+from flask_limiter.util import get_remote_address
 
 from src.orchestrator_memory import evaluate_memory_capture
 from src.llm_provider import get_provider
@@ -12,6 +17,57 @@ from src.tracer import get_tracer
 load_dotenv()
 
 app = Flask(__name__)
+
+MAX_REQUEST_BYTES = int(os.getenv("ORCH_MAX_REQUEST_BYTES", "1048576"))
+app.config["MAX_CONTENT_LENGTH"] = MAX_REQUEST_BYTES
+
+LOG_LEVEL = os.getenv("ORCH_LOG_LEVEL", "INFO").upper()
+LOG_JSON = os.getenv("ORCH_LOG_JSON", "1") == "1"
+
+
+class JsonFormatter(logging.Formatter):
+    def format(self, record: logging.LogRecord) -> str:  # pragma: no cover - logging
+        base = {
+            "level": record.levelname,
+            "logger": record.name,
+            "message": record.getMessage(),
+            "timestamp": int(record.created * 1000),
+        }
+        if hasattr(record, "extra") and isinstance(record.extra, dict):
+            base.update(record.extra)
+        return json.dumps(base, separators=(",", ":"))
+
+
+logger = logging.getLogger("orchestrators_v2")
+logger.setLevel(LOG_LEVEL)
+_handler = logging.StreamHandler()
+_handler.setFormatter(JsonFormatter() if LOG_JSON else logging.Formatter("%(asctime)s %(levelname)s %(message)s"))
+if not logger.handlers:
+    logger.addHandler(_handler)
+
+RATE_LIMIT_ENABLED = os.getenv("ORCH_RATE_LIMIT_ENABLED", "1") == "1"
+RATE_LIMIT = os.getenv("ORCH_RATE_LIMIT", "60 per minute")
+limiter = Limiter(app=app, key_func=get_remote_address, default_limits=[RATE_LIMIT]) if RATE_LIMIT_ENABLED else None
+
+METRICS_REGISTRY = CollectorRegistry(auto_describe=True)
+REQUEST_COUNT = Counter(
+    "orch_requests_total",
+    "Total requests",
+    ["route", "method", "status"],
+    registry=METRICS_REGISTRY,
+)
+REQUEST_LATENCY = Histogram(
+    "orch_request_latency_seconds",
+    "Request latency",
+    ["route", "method"],
+    registry=METRICS_REGISTRY,
+)
+ERROR_COUNT = Counter(
+    "orch_errors_total",
+    "Total errors",
+    ["route", "method", "status"],
+    registry=METRICS_REGISTRY,
+)
 
 
 @app.before_request
@@ -25,6 +81,27 @@ def finalize_request(response):
     request_id = getattr(g, "request_id", None)
     if request_id:
         response.headers["X-Request-ID"] = request_id
+    route = request.path
+    method = request.method
+    status = str(response.status_code)
+    duration = time.time() - getattr(g, "request_start", time.time())
+    REQUEST_COUNT.labels(route, method, status).inc()
+    REQUEST_LATENCY.labels(route, method).observe(duration)
+    if response.status_code >= 500:
+        ERROR_COUNT.labels(route, method, status).inc()
+
+    logger.info(
+        "request",
+        extra={
+            "extra": {
+                "request_id": request_id,
+                "route": route,
+                "method": method,
+                "status": response.status_code,
+                "latency_ms": int(duration * 1000),
+            }
+        },
+    )
     return response
 
 def require_bearer():
@@ -62,6 +139,17 @@ def ready():
 
     return {"status": "ready", "service": "orchestrators_v2"}
 
+
+@app.get("/metrics")
+def metrics():
+    if os.getenv("ORCH_METRICS_ENABLED", "1") != "1":
+        return {"status": "disabled", "service": "orchestrators_v2"}, 503
+    if os.getenv("ORCH_REQUIRE_BEARER", "0") == "1":
+        ok, err = require_bearer()
+        if not ok:
+            return jsonify(err), 401
+    return Response(generate_latest(METRICS_REGISTRY), mimetype=CONTENT_TYPE_LATEST)
+
 @app.post("/echo")
 def echo():
     """Echo endpoint for testing - returns message field as 'echo' response"""
@@ -69,7 +157,14 @@ def echo():
     message = data.get("message", "")
     return jsonify({"echo": message}), 200
 
+def _limit_route(func):
+    if limiter:
+        return limiter.limit(RATE_LIMIT)(func)
+    return func
+
+
 @app.post("/v1/chat/completions")
+@_limit_route
 def chat_completions():
     if not _api_enabled():
         return jsonify({"error": {"message": "API disabled", "type": "service_unavailable", "code": 503}}), 503
