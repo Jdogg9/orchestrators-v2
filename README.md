@@ -76,6 +76,23 @@ curl http://127.0.0.1:8088/ready
 
 # 5. Full receipts bundle (boundary + secrets + tests)
 ./scripts/verify.sh
+
+**CI preflight:** Run these locally before pushing to match the CI gates and order.
+
+```bash
+# CI preflight (mirrors .github/workflows/ci.yml order)
+python -m pip install --upgrade pip
+pip install -r requirements.txt
+
+./scripts/verify_public_boundary.sh
+./scripts/secret_scan.sh
+
+pytest -q -k "repo_facts"
+pytest -q
+
+# Optional: run script lint locally if you have shellcheck installed
+shellcheck -e SC2155 -e SC2046 -e SC2012 ./scripts/*.sh
+```
 ```
 
 ## Try the Toy Orchestrator (5 minutes)
