@@ -33,6 +33,7 @@ This release hardens the orchestrator with confidence-gated routing and policy-e
 - **Conditional Approvals**: length-gated tool access in `tool_policy.yaml` prevents oversized/malicious inputs.
 - **Top-K Diagnostics**: traces now record the highest semantic matches for auditability.
 - **Hardened Sandbox**: `python_exec` runs isolated with strict resource limits.
+- **Expanded Tools**: built-in summarization plus optional web search (opt-in).
 
 These layers shift the system from “works” to “safe to leave unattended.”
 
@@ -47,8 +48,10 @@ These layers shift the system from “works” to “safe to leave unattended.�
 - **Routing flags**: `ORCH_ORCHESTRATOR_MODE`, `ORCH_ROUTER_POLICY_PATH`
 - **Semantic routing flags**: `ORCH_SEMANTIC_ROUTER_ENABLED`, `ORCH_SEMANTIC_ROUTER_MIN_SIMILARITY`, `ORCH_SEMANTIC_ROUTER_EMBED_MODEL`, `ORCH_SEMANTIC_ROUTER_OLLAMA_URL`, `ORCH_SEMANTIC_ROUTER_TIMEOUT_SEC`
 - **DB flags**: `ORCH_DATABASE_URL`, `ORCH_DB_POOL_RECYCLE`
-- **Sandbox flags**: `ORCH_TOOL_SANDBOX_ENABLED`, `ORCH_TOOL_SANDBOX_REQUIRED`, `ORCH_SANDBOX_IMAGE`, `ORCH_SANDBOX_TIMEOUT_SEC`, `ORCH_SANDBOX_MEMORY_MB`, `ORCH_SANDBOX_CPU`, `ORCH_SANDBOX_TOOL_DIR`
+- **Sandbox flags**: `ORCH_TOOL_SANDBOX_ENABLED`, `ORCH_TOOL_SANDBOX_REQUIRED`, `ORCH_TOOL_SANDBOX_FALLBACK`, `ORCH_SANDBOX_IMAGE`, `ORCH_SANDBOX_TIMEOUT_SEC`, `ORCH_SANDBOX_MEMORY_MB`, `ORCH_SANDBOX_CPU`, `ORCH_SANDBOX_TOOL_DIR`
 - **Tool policy flags**: `ORCH_TOOL_POLICY_ENFORCE`, `ORCH_TOOL_POLICY_PATH`
+- **Tool feature flags**: `ORCH_TOOL_WEB_SEARCH_ENABLED`
+- **Tool output flags**: `ORCH_TOOL_OUTPUT_MAX_CHARS`, `ORCH_TOOL_OUTPUT_SCRUB_ENABLED`, `ORCH_POLICY_DECISIONS_IN_RESPONSE`
 - **OTel flags**: `ORCH_OTEL_ENABLED`, `ORCH_OTEL_EXPORTER_OTLP_ENDPOINT`, `ORCH_SERVICE_NAME`
 - **Trace flags**: `ORCH_TRACE_ENABLED`, `ORCH_TRACE_DB_PATH`
 - **Memory flags**: `ORCH_MEMORY_ENABLED`, `ORCH_MEMORY_CAPTURE_ENABLED`, `ORCH_MEMORY_WRITE_POLICY`, `ORCH_MEMORY_CAPTURE_TTL_MINUTES`, `ORCH_MEMORY_DB_PATH`
@@ -211,6 +214,9 @@ Server runs on `http://127.0.0.1:8088` and stays local-only by default.
 * **No exfiltration**: Data stays on your machine
 * **Feature flags**: Memory/recall/tools OFF by default
 * **Runtime state**: Never committed (see [.gitignore](.gitignore))
+* **Rate limits**: keyed by bearer token hash when provided (falls back to IP)
+
+**Rate limit storage**: If `ORCH_RATE_LIMIT_STORAGE_URL` is not set, limits are per-process. For multi-worker or production use, Redis is strongly recommended.
 
 ## Documentation
 

@@ -111,6 +111,7 @@ class Orchestrator:
                 handler=lambda **_: "sandbox_required",
                 safe=False,
                 sandbox_command=["python", "/tools/python_eval.py"],
+                requires_sandbox=True,
             )
         )
         self.registry.register(
@@ -120,6 +121,31 @@ class Orchestrator:
                 handler=lambda **_: "sandbox_required",
                 safe=False,
                 sandbox_command=["python", "/tools/python_exec.py"],
+                requires_sandbox=True,
+            )
+        )
+
+        if os.getenv("ORCH_TOOL_WEB_SEARCH_ENABLED", "0") == "1":
+            from src.tools.web_search import web_search
+
+            self.registry.register(
+                ToolSpec(
+                    name="web_search",
+                    description="Search the public web (DuckDuckGo) for non-sensitive queries",
+                    handler=web_search,
+                    safe=False,
+                    requires_sandbox=False,
+                )
+            )
+
+        from src.tools.summarize import summarize_text
+        self.registry.register(
+            ToolSpec(
+                name="summarize_text",
+                description="Summarize text locally without an LLM",
+                handler=summarize_text,
+                safe=True,
+                requires_sandbox=False,
             )
         )
 

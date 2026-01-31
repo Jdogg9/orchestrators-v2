@@ -13,6 +13,18 @@ rules:
     reason: "allow_safe_calc"
     require_safe: true
 
+  - match: "^summarize_text$"
+    action: allow
+    reason: "allow_summarize_text"
+    require_safe: true
+
+  - match: "^web_search$"
+    action: allow
+    reason: "allow_web_search"
+    conditions:
+      input_param: "query"
+      max_input_len: 500
+
   # Conditional approvals (example): allow python_exec only for short inputs.
   # - match: "^python_exec$"
   #   action: allow

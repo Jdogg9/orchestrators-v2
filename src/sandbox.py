@@ -25,6 +25,22 @@ class SandboxRunner:
         self.memory_mb = int(os.getenv("ORCH_SANDBOX_MEMORY_MB", "256"))
         self.cpu = os.getenv("ORCH_SANDBOX_CPU", "0.5")
         self.tool_dir = os.getenv("ORCH_SANDBOX_TOOL_DIR", "sandbox_tools")
+        self.docker_available = self._check_docker()
+
+    def _check_docker(self) -> bool:
+        if not self.enabled:
+            return False
+        try:
+            completed = subprocess.run(
+                ["docker", "info"],
+                capture_output=True,
+                text=True,
+                timeout=3,
+                check=False,
+            )
+            return completed.returncode == 0
+        except (subprocess.SubprocessError, FileNotFoundError):
+            return False
 
     def run(self, command: List[str], payload: Dict[str, object]) -> SandboxResult:
         if not self.enabled:
@@ -32,6 +48,14 @@ class SandboxRunner:
                 status="error",
                 stdout="",
                 stderr="sandbox_disabled",
+                exit_code=1,
+            )
+
+        if not self.docker_available:
+            return SandboxResult(
+                status="error",
+                stdout="",
+                stderr="docker_unavailable",
                 exit_code=1,
             )
 

@@ -1,7 +1,6 @@
 import os
 import re
 import sqlite3
-import importlib
 from pathlib import Path
 
 import pytest
@@ -37,8 +36,10 @@ def test_repo_facts_block_matches_expected():
         "- **Routing flags**: `ORCH_ORCHESTRATOR_MODE`, `ORCH_ROUTER_POLICY_PATH`",
         "- **Semantic routing flags**: `ORCH_SEMANTIC_ROUTER_ENABLED`, `ORCH_SEMANTIC_ROUTER_MIN_SIMILARITY`, `ORCH_SEMANTIC_ROUTER_EMBED_MODEL`, `ORCH_SEMANTIC_ROUTER_OLLAMA_URL`, `ORCH_SEMANTIC_ROUTER_TIMEOUT_SEC`",
         "- **DB flags**: `ORCH_DATABASE_URL`, `ORCH_DB_POOL_RECYCLE`",
-        "- **Sandbox flags**: `ORCH_TOOL_SANDBOX_ENABLED`, `ORCH_TOOL_SANDBOX_REQUIRED`, `ORCH_SANDBOX_IMAGE`, `ORCH_SANDBOX_TIMEOUT_SEC`, `ORCH_SANDBOX_MEMORY_MB`, `ORCH_SANDBOX_CPU`, `ORCH_SANDBOX_TOOL_DIR`",
+        "- **Sandbox flags**: `ORCH_TOOL_SANDBOX_ENABLED`, `ORCH_TOOL_SANDBOX_REQUIRED`, `ORCH_TOOL_SANDBOX_FALLBACK`, `ORCH_SANDBOX_IMAGE`, `ORCH_SANDBOX_TIMEOUT_SEC`, `ORCH_SANDBOX_MEMORY_MB`, `ORCH_SANDBOX_CPU`, `ORCH_SANDBOX_TOOL_DIR`",
         "- **Tool policy flags**: `ORCH_TOOL_POLICY_ENFORCE`, `ORCH_TOOL_POLICY_PATH`",
+        "- **Tool feature flags**: `ORCH_TOOL_WEB_SEARCH_ENABLED`",
+        "- **Tool output flags**: `ORCH_TOOL_OUTPUT_MAX_CHARS`, `ORCH_TOOL_OUTPUT_SCRUB_ENABLED`, `ORCH_POLICY_DECISIONS_IN_RESPONSE`",
         "- **OTel flags**: `ORCH_OTEL_ENABLED`, `ORCH_OTEL_EXPORTER_OTLP_ENDPOINT`, `ORCH_SERVICE_NAME`",
         "- **Trace flags**: `ORCH_TRACE_ENABLED`, `ORCH_TRACE_DB_PATH`",
         "- **Memory flags**: `ORCH_MEMORY_ENABLED`, `ORCH_MEMORY_CAPTURE_ENABLED`, `ORCH_MEMORY_WRITE_POLICY`, `ORCH_MEMORY_CAPTURE_TTL_MINUTES`, `ORCH_MEMORY_DB_PATH`",
@@ -67,10 +68,10 @@ def test_repo_facts_routes_match_server():
     os.environ["ORCH_LLM_ENABLED"] = "0"
     os.environ["ORCH_ENABLE_API"] = "1"
     os.environ["ORCH_METRICS_ENABLED"] = "1"
-    from src import server
-    importlib.reload(server)
+    from src.server import create_app
+    app = create_app()
 
-    with server.app.test_client() as client:
+    with app.test_client() as client:
         health = client.get("/health")
         assert health.status_code == 200
 

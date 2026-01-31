@@ -9,6 +9,7 @@ This repo ships a minimal **tool registry**, **rule router**, and an optional **
 - Unsafe tools can be forced through a Docker sandbox via `ORCH_TOOL_SANDBOX_ENABLED`.
 - Optional policy enforcement uses `PolicyEngine` with `ORCH_TOOL_POLICY_ENFORCE`.
 - Unsafe tools such as `python_eval` and `python_exec` only run in Docker when `ORCH_TOOL_SANDBOX_REQUIRED=1`.
+- `ORCH_TOOL_SANDBOX_FALLBACK=1` allows per-tool unsandboxed fallbacks when explicitly configured.
 
 ### Example
 ```python
@@ -20,6 +21,41 @@ def echo(message: str) -> str:
 registry = ToolRegistry()
 registry.register(ToolSpec(name="echo", description="Echo message", handler=echo))
 result = registry.execute("echo", message="hello")
+```
+
+## Built-in Tools (Default)
+
+| Tool | Safe | Sandbox | Notes |
+| --- | --- | --- | --- |
+| `echo` | ✅ | No | Echo input |
+| `safe_calc` | ✅ | No | AST-safe math |
+| `summarize_text` | ✅ | No | Extractive summary (no LLM) |
+| `python_eval` | ❌ | Required | Requires Docker sandbox |
+| `python_exec` | ❌ | Required | Requires Docker sandbox |
+
+## Optional Tools (Off by Default)
+
+| Tool | Flag | Safety | Notes |
+| --- | --- | --- | --- |
+| `web_search` | `ORCH_TOOL_WEB_SEARCH_ENABLED=1` | ❌ | Uses DuckDuckGo, gated by policy rules |
+
+## Safe Extension Pattern
+
+```python
+from src.tool_registry import ToolRegistry, ToolSpec
+
+def redact(text: str) -> str:
+    return text.replace("secret", "[REDACTED]")
+
+registry = ToolRegistry()
+registry.register(
+    ToolSpec(
+        name="redact_text",
+        description="Redact secrets from text",
+        handler=redact,
+        safe=True,
+    )
+)
 ```
 
 ## Safe Calculator Tool (src/tools/math.py)
