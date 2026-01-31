@@ -1,7 +1,7 @@
 flask==3.0.3
 python-dotenv==1.0.0
-requests==2.32.3
-gunicorn==21.2.0
+requests==2.32.4
+gunicorn==22.0.0
 pytest==9.0.2
 prometheus-client==0.20.0
 flask-limiter==3.5.0
@@ -16,3 +16,4 @@ opentelemetry-exporter-otlp==1.25.0
 opentelemetry-instrumentation-flask==0.46b0
 tiktoken==0.12.0
 reportlab==4.2.0
+protobuf>=5.29.5
