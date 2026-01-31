@@ -87,10 +87,10 @@ def test_hitl_decisions_not_cached(tmp_path, monkeypatch):
 
 def test_signature_scrubs_pii_and_secrets():
     sig_email_1 = IntentRouter._signature(
-        IntentRouter._normalize_input("Contact me at test@example.com")
+           IntentRouter._normalize_input("Contact me at test@local.test")
     )
     sig_email_2 = IntentRouter._signature(
-        IntentRouter._normalize_input("Contact me at other@example.com")
+           IntentRouter._normalize_input("Contact me at other@local.test")
     )
     sig_token = IntentRouter._signature(
         IntentRouter._normalize_input("Use token sk-proj-abcdef1234567890")
