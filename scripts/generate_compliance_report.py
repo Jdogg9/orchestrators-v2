@@ -188,6 +188,12 @@ def generate_jsonld(output_path: Path, trace_db_path: Path) -> None:
             "source": vulnerability_log.get("source", "unknown"),
             "status": vulnerability_log.get("status", "unknown"),
             "log_path": str(vulnerability_log_path),
+            "nist_ai_rmf_reference": {
+                "function": "Measure",
+                "subcategory": "Measure-2.1",
+                "standard": "NIST AI RMF 1.0",
+                "description": "Dependency health and reachability evidence mapped to supply chain risk monitoring.",
+            },
             "summary": {
                 "total": len(assessments),
                 "mitigated": mitigated_count,
