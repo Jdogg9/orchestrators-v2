@@ -223,6 +223,27 @@ def save_everything(data):
 - Reviews: Feedback is about code, not people
 - Philosophy: If you disagree with a principle, open a discussion issue first
 
+## Vulnerability Disclosure Policy (VDP)
+
+We welcome security research and coordinated disclosure.
+
+**How to report**
+- Email: security@nexusstl.com
+- Subject: "ORCHESTRATORS_V2 Security Report"
+- Include: affected version, proof-of-concept (if safe), impact assessment, and reproduction steps.
+
+**Scope**
+- In scope: runtime safety gates, tokenization and pruning, trace receipts, compliance exports, and API surface.
+- Out of scope: third-party services and unrelated infrastructure.
+
+**What to expect**
+- Acknowledgment within 3 business days.
+- Remediation plan within 10 business days.
+- Coordinated disclosure window agreed upon before publication.
+
+**Safe harbor**
+We will not pursue legal action against researchers who follow this policy and act in good faith.
+
 ## Versioning
 
 We follow **semantic versioning**:
