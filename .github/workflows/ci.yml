@@ -31,6 +31,11 @@ jobs:
           source /tmp/orch-packaging-venv/bin/activate
           python -m pip install --upgrade pip
 
+          export ORCH_INTENT_CACHE_DB_PATH=/tmp/orch_intent_cache.db
+          export ORCH_INTENT_HITL_DB_PATH=/tmp/orch_hitl_queue.db
+          export ORCH_INTENT_CACHE_ENABLED=0
+          export ORCH_INTENT_HITL_ENABLED=0
+
           python -m compileall src
 
           set +e
