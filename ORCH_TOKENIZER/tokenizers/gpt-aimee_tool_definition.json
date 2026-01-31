@@ -1,0 +1,31 @@
+{
+  "tool_id": "tokenizer.gpt-aimee",
+  "name": "gpt-aimee Tokenizer",
+  "description": "Custom BPE tokenizer trained on AIMEE data corpus",
+  "version": "1.0.0",
+  "category": "nlp",
+  "type": "tokenizer",
+  "framework": "tiktoken",
+  "capabilities": [
+    "encode",
+    "decode",
+    "count_tokens"
+  ],
+  "config": {
+    "model_path": "/path/to/orchestrators_v2/ORCH_TOKENIZER/tokenizers/gpt-aimee.model",
+    "meta_path": "/path/to/orchestrators_v2/ORCH_TOKENIZER/tokenizers/gpt-aimee_tokenizer_meta.json",
+    "vocab_size": 50257,
+    "boundary_token": "<|endoftext|>",
+    "pattern": "(?i:'s|'t|'re|'ve|'m|'ll|'d)|[^\\r\\n\\p{L}\\p{N}]?\\p{L}+|\\p{N}{1,3}| ?[^\\s\\p{L}\\p{N}]+[\\r\\n]*|\\s*[\\r\\n]+|\\s+(?!\\S)|\\s+"
+  },
+  "usage": {
+    "python_example": "\nimport tiktoken\n\n# Load the tokenizer\nenc = tiktoken.get_encoding(\"gpt-aimee\")\n\n# Encode text to tokens\ntext = \"Hello AIMEE!\"\ntokens = enc.encode(text)\nprint(f\"Tokens: {tokens}\")\n\n# Decode tokens back to text\ndecoded = enc.decode(tokens)\nprint(f\"Decoded: {decoded}\")\n\n# Count tokens\nnum_tokens = len(tokens)\nprint(f\"Token count: {num_tokens}\")\n",
+    "api_integration": "Can be loaded via tiktoken.Encoding with mergeable_ranks from .model file"
+  },
+  "metadata": {
+    "created_at": "2026-01-26T15:07:11.214516",
+    "training_chars": 50000031,
+    "training_method": "minbpe.RegexTokenizer with random sampling",
+    "gpt4_compatible": true
+  }
+}

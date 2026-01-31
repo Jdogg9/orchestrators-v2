@@ -1,0 +1,10 @@
+{
+  "model_id": "tokenizer/gpt-aimee",
+  "model_type": "tokenizer",
+  "framework": "tiktoken",
+  "vocab_size": 50257,
+  "path": "/path/to/orchestrators_v2/ORCH_TOKENIZER/tokenizers/gpt-aimee.model",
+  "meta_path": "/path/to/orchestrators_v2/ORCH_TOKENIZER/tokenizers/gpt-aimee_tokenizer_meta.json",
+  "created_at": "2026-01-26T15:07:11.214516",
+  "size_bytes": 500616
+}

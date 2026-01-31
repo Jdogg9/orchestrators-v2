@@ -8,6 +8,7 @@ from typing import Dict, List, Optional
 import yaml
 
 from src.router import RouteDecision
+from src.tools.orch_tokenizer import orch_tokenizer
 
 
 @dataclass(frozen=True)
@@ -66,12 +67,53 @@ class ModelRouter:
         self.model_chat = os.getenv("ORCH_MODEL_CHAT", "qwen2.5:3b")
         self.model_tool = os.getenv("ORCH_MODEL_TOOL", "qwen2.5:3b")
         self.model_reasoner = os.getenv("ORCH_MODEL_REASONER", self.model_chat)
+        self.chat_tier1_max_tokens = int(os.getenv("ORCH_MODEL_CHAT_TIER1_MAX_TOKENS", "4096"))
+        self.reasoner_tier1_max_tokens = int(
+            os.getenv("ORCH_MODEL_REASONER_TIER1_MAX_TOKENS", "32768")
+        )
+        self.tier3_min_tokens = int(os.getenv("ORCH_TIER3_MIN_TOKENS", "32768"))
+        self.tokenizer_model = os.getenv("ORCH_TOKENIZER_MODEL", "gpt-aimee")
 
-    def select_model(self, user_input: str, tool_selected: bool) -> ModelDecision:
+    def select_model(
+        self,
+        messages: List[Dict[str, str]],
+        tool_selected: bool,
+        token_count: Optional[int] = None,
+    ) -> ModelDecision:
         if tool_selected:
             return ModelDecision(model=self.model_tool, reason="tool_selected")
-        if len(user_input) > 1200:
-            return ModelDecision(model=self.model_reasoner, reason="long_context")
-        if any(keyword in user_input.lower() for keyword in ("analyze", "strategy", "threat model")):
+
+        total_tokens = token_count if token_count is not None else self._count_tokens(messages)
+
+        if total_tokens > self.tier3_min_tokens:
+            return ModelDecision(model=self.model_reasoner, reason="tier3_summary_required")
+        if total_tokens > self.reasoner_tier1_max_tokens:
+            return ModelDecision(model=self.model_reasoner, reason="tier2_overflow")
+        if total_tokens > self.chat_tier1_max_tokens:
+            return ModelDecision(model=self.model_reasoner, reason="tier1_overflow")
+        if any(
+            keyword in self._last_user_text(messages).lower()
+            for keyword in ("analyze", "strategy", "threat model")
+        ):
             return ModelDecision(model=self.model_reasoner, reason="analysis_request")
         return ModelDecision(model=self.model_chat, reason="default_chat")
+
+    def _count_tokens(self, messages: List[Dict[str, str]]) -> int:
+        total = 0
+        for msg in messages:
+            content = str(msg.get("content", "")).strip()
+            if not content:
+                continue
+            payload = orch_tokenizer(action="count", text=content, model_name=self.tokenizer_model)
+            if payload.get("status") == "ok":
+                total += int(payload.get("token_count", 0))
+            else:
+                total += max(1, len(content) // 4)
+        return total
+
+    @staticmethod
+    def _last_user_text(messages: List[Dict[str, str]]) -> str:
+        for msg in reversed(messages):
+            if msg.get("role") == "user":
+                return str(msg.get("content", ""))
+        return ""

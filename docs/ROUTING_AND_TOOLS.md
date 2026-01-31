@@ -146,6 +146,45 @@ If the condition fails, the rule is skipped and the next rule applies (usually
 - Regex-driven matching with explicit confidence + reasons.
 - Deterministic and auditable for high-stakes use.
 
+## Tiered Reasoning Strategy (Token-Aware)
+
+Orchestrators-v2 uses **token-density** to select the best model tier and to trigger
+summary mode when the context grows too large. The tiers are documented and enforced
+through environment-driven thresholds:
+
+| Tier | Token Budget | Routing Behavior | Example Models |
+| --- | --- | --- | --- |
+| Tier 1 (Fast-Path) | < 4k tokens | Routes to efficient local SLMs | Phi-4, Llama-3-8B |
+| Tier 2 (Reasoning) | 4k–32k tokens | Routes to frontier local models | Llama-3-70B |
+| Tier 3 (Large Context) | > 32k tokens | Triggers summary mode before routing | Llama-3-70B + Summary |
+
+**Deterministic standard (2026 baseline):** 4k (Tier 1), 32k (Tier 2 ceiling), 32k+ (Tier 3).
+
+### Configuration
+
+- `ORCH_MODEL_CHAT_TIER1_MAX_TOKENS` (default: `4096`)
+- `ORCH_MODEL_REASONER_TIER1_MAX_TOKENS` (default: `32768`)
+- `ORCH_TIER3_MIN_TOKENS` (default: `32768`)
+- `ORCH_MAX_TOKENS` (default: `16384`)
+- `ORCH_TOKEN_BUDGET_SUMMARY_ENABLED` (default: `0`, Tier-3 forces summary)
+
+### Summary Mode Behavior
+
+When Tier 3 is reached, the orchestrator inserts a pinned system summary message:
+
+```
+Previous Context Summary: <summary content>
+```
+
+This preserves the **initial goal** and pinned context while trimming the middle
+conversation turns.
+
+### Why This Upgrade Matters
+
+Token-aware routing prevents **semantic drift** by keeping the initial intent pinned
+and trimming only the noisy middle turns. The result is a deterministic, auditable
+context policy that preserves reasoning density as conversations grow.
+
 ## Semantic Router (src/semantic_router.py)
 
 Optional fallback router that uses embeddings to match user intent to tool descriptions **only when deterministic routing fails**.

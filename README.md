@@ -17,6 +17,12 @@ You get deterministic routing + tools without turning into a sprawling framework
 A reproducible, local-first **privacy-first orchestration framework** with production-oriented guardrails and safety-first defaults
 for a stable identity + routing + tools + optional memory, designed for *your* machine and *your* rules.
 
+## Why this is different
+
+- **Token-aware safety**: deterministic token budgets, tiered reasoning (4k / 32k / 32k+), and priority-aware pruning with receipt-backed telemetry.
+- **Graceful degradation**: tokenizer fallback preserves safety logic even when optional dependencies are unavailable.
+- **Boundary-first posture**: public boundary verification is a first-class release gate.
+
 ## Why not LangGraph / CrewAI?
 
 No dunking—just different assumptions:

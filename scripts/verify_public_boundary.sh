@@ -114,7 +114,7 @@ fi
 
 # Check 5: .gitignore is comprehensive
 echo ""
-echo "[5/5] Checking .gitignore..."
+echo "[5/6] Checking .gitignore..."
 REQUIRED_IGNORES=(
     ".env"
     "*.db"
@@ -137,6 +137,21 @@ if [[ $MISSING -eq 0 ]]; then
 else
     echo "  ❌ FAIL: .gitignore missing critical patterns"
     EXIT_CODE=1
+fi
+
+# Check 6: No tokenizer artifacts in src/
+echo ""
+echo "[6/6] Checking src/ for tokenizer artifacts..."
+SRC_DIR="$PUBLIC/src"
+if [[ -d "$SRC_DIR" ]]; then
+    if find "$SRC_DIR" \( -name "*.bin" -o -name "*.json" \) | grep .; then
+        echo "  ❌ FAIL: Found tokenizer artifacts in src/ (expected clean tree)"
+        EXIT_CODE=1
+    else
+        echo "  ✅ PASS: src/ contains no tokenizer artifacts"
+    fi
+else
+    echo "  ⚠️  WARN: src/ directory not found"
 fi
 
 # Summary
