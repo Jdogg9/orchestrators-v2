@@ -35,6 +35,7 @@ a stable identity + routing + tools + optional memory, designed for *your* machi
 - **Routing flags**: `ORCH_ORCHESTRATOR_MODE`, `ORCH_ROUTER_POLICY_PATH`
 - **DB flags**: `ORCH_DATABASE_URL`, `ORCH_DB_POOL_RECYCLE`
 - **Sandbox flags**: `ORCH_TOOL_SANDBOX_ENABLED`, `ORCH_TOOL_SANDBOX_REQUIRED`, `ORCH_SANDBOX_IMAGE`, `ORCH_SANDBOX_TIMEOUT_SEC`, `ORCH_SANDBOX_MEMORY_MB`, `ORCH_SANDBOX_CPU`, `ORCH_SANDBOX_TOOL_DIR`
+- **Tool policy flags**: `ORCH_TOOL_POLICY_ENFORCE`, `ORCH_TOOL_POLICY_PATH`
 - **OTel flags**: `ORCH_OTEL_ENABLED`, `ORCH_OTEL_EXPORTER_OTLP_ENDPOINT`, `ORCH_SERVICE_NAME`
 - **Trace flags**: `ORCH_TRACE_ENABLED`, `ORCH_TRACE_DB_PATH`
 - **Memory flags**: `ORCH_MEMORY_ENABLED`, `ORCH_MEMORY_CAPTURE_ENABLED`, `ORCH_MEMORY_WRITE_POLICY`, `ORCH_MEMORY_CAPTURE_TTL_MINUTES`, `ORCH_MEMORY_DB_PATH`
@@ -188,6 +189,7 @@ Server runs on `http://127.0.0.1:8088` and stays local-only by default.
 - [Routing & Tools](docs/ROUTING_AND_TOOLS.md) - Tool registry + rule routing patterns
 - [Production Readiness](docs/PRODUCTION_READINESS.md) - Gaps and hardening checklist
 - [Production Deployment](docs/PRODUCTION_DEPLOYMENT.md) - High-stakes stack
+- [Security Governance](docs/SECURITY_GOVERNANCE.md) - Signed commits, branch protections, dynamic scans
 - [Public Release Guide](docs/PUBLIC_RELEASE_GUIDE.md) - Maintenance workflow
 
 ## Contributing

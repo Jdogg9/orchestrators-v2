@@ -4,6 +4,7 @@ from dataclasses import dataclass
 from typing import Any, Callable, Dict, List, Optional
 import os
 
+from src.policy_engine import PolicyEngine
 from src.sandbox import SandboxRunner
 
 
@@ -22,6 +23,7 @@ class ToolRegistry:
     def __init__(self) -> None:
         self._tools: Dict[str, ToolSpec] = {}
         self._sandbox = SandboxRunner()
+        self._policy = PolicyEngine.from_env()
 
     def register(self, tool: ToolSpec) -> None:
         if tool.name in self._tools:
@@ -38,6 +40,14 @@ class ToolRegistry:
         tool = self.get(name)
         if not tool:
             return {"status": "error", "error": f"unknown_tool:{name}"}
+        decision = self._policy.check(tool.name, tool.safe)
+        if not decision.allowed:
+            return {
+                "status": "error",
+                "tool": name,
+                "error": f"policy_denied:{decision.reason}",
+                "policy_rule": decision.rule,
+            }
         try:
             if not tool.safe:
                 if os.getenv("ORCH_TOOL_SANDBOX_REQUIRED", "1") == "1":

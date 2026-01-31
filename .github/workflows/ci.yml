@@ -32,6 +32,14 @@ jobs:
       - name: Security automation
         run: ORCH_SECURITY_STRICT=1 ./scripts/security_scan.sh
 
+      - name: Signed commit enforcement (optional)
+        if: env.ORCH_REQUIRE_SIGNED_COMMITS == '1'
+        run: ./scripts/verify_signed_commits.sh
+
+      - name: Dynamic scan (optional)
+        if: env.ORCH_DYNAMIC_SCAN_ENABLED == '1'
+        run: ./scripts/dynamic_scan.sh
+
       - name: Repo Facts fast gate
         run: pytest -q -k "repo_facts"
 

@@ -7,6 +7,7 @@ This repo ships a minimal **tool registry**, **rule router**, and an optional **
 - `ToolRegistry` stores `ToolSpec` entries (name, description, handler).
 - `execute()` returns a structured result (`status`, `result` or `error`).
 - Unsafe tools can be forced through a Docker sandbox via `ORCH_TOOL_SANDBOX_ENABLED`.
+- Optional policy enforcement uses `PolicyEngine` with `ORCH_TOOL_POLICY_ENFORCE`.
 
 ### Example
 ```python
@@ -53,6 +54,20 @@ The toy orchestrator now uses both:
 See [examples/toy_orchestrator.py](../examples/toy_orchestrator.py).
 
 ## Extension Path
+
+## Tool Policy Engine (src/policy_engine.py)
+
+- Deterministic allow/deny rules loaded from `config/tool_policy.yaml`.
+- Enable enforcement via `ORCH_TOOL_POLICY_ENFORCE=1`.
+- Default policy can deny unsafe tools while allowing known safe handlers.
+
+### Example
+```python
+from src.policy_engine import PolicyEngine
+
+engine = PolicyEngine.from_env()
+decision = engine.check("python_eval", safe=False)
+```
 
 ## Policy Router (src/advanced_router.py)
 

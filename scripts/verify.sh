@@ -14,6 +14,12 @@ echo "==> Secret scan"
 echo "==> Security automation"
 ./scripts/security_scan.sh
 
+echo "==> Signed commit verification (optional)"
+./scripts/verify_signed_commits.sh
+
+echo "==> Dynamic scan (optional)"
+./scripts/dynamic_scan.sh
+
 echo "==> Pytest"
 pytest -q
 

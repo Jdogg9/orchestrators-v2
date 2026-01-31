@@ -13,17 +13,21 @@ This repo is a **reference implementation**. Below is a short, concrete checklis
 - **Structured logs**: JSON logging with request IDs and latency.
 - **Advanced routing (optional)**: Policy-driven router via `config/router_policy.yaml`.
 - **Sandboxed tools (optional)**: Docker-based execution for unsafe tools.
+- **Tool policy engine (optional)**: Deterministic allow/deny rules via `config/tool_policy.yaml`.
 - **Storage upgrade (optional)**: Postgres support via `ORCH_DATABASE_URL`.
 - **Tracing**: OpenTelemetry support with OTLP exporter.
+- **Dashboards + alerting**: Prometheus/Grafana + Alertmanager config in `deploy/observability`.
 - **Secret scan in CI**: `scripts/secret_scan.sh` runs on every push/PR.
-- **Security automation**: Bandit + pip-audit in CI via `scripts/security_scan.sh`.
+- **Security automation**: Bandit + pip-audit (plus optional Semgrep/Trivy).
+- **Optional dynamic scan**: OWASP ZAP baseline script (`scripts/dynamic_scan.sh`).
+- **Optional signed-commit checks**: `scripts/verify_signed_commits.sh` (env-gated).
 
 ## Gaps (Intentional)
 
-- **Tool policy depth**: No fine-grained, user-scoped policy engine or quotas for sandboxed tools.
+- **Tool policy depth**: No user-scoped policy engine or quotas for sandboxed tools.
 - **Routing depth**: Policy router is deterministic but does not do cost or reinforcement learning.
-- **Observability stack**: Requires external collectors/dashboards to be wired (Prometheus/Grafana/Otel).
-- **Security controls**: No DAST or signed-commit enforcement by default.
+- **Observability stack**: Alert routing and long-term storage require operator configuration.
+- **Security controls**: DAST and signed-commit enforcement are optional, not default.
 
 ## Recommended Hardening Steps
 

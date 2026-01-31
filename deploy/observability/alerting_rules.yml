@@ -1,0 +1,20 @@
+groups:
+  - name: orchestrators-v2
+    rules:
+      - alert: OrchestratorsDown
+        expr: up{job="orchestrators-v2"} == 0
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Orchestrators-v2 is down"
+          description: "Prometheus has not scraped orchestrators-v2 for 2 minutes."
+
+      - alert: HighProcessMemory
+        expr: process_resident_memory_bytes{job="orchestrators-v2"} > 800 * 1024 * 1024
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High memory usage"
+          description: "Process memory > 800MB for 5 minutes."

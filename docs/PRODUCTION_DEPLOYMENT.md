@@ -10,12 +10,15 @@ This guide deploys ORCHESTRATORS_V2 with **sandboxing**, **Postgres**, **Redis-b
 - **OpenTelemetry Collector**: Trace forwarding
 - **Prometheus**: Metrics scrape
 - **Grafana**: Dashboards
+- **Alertmanager**: Alert routing
 
 ## Files
 
 - `deploy/docker-compose.prod.yml`
 - `deploy/observability/otel-collector.yaml`
 - `deploy/observability/prometheus.yml`
+- `deploy/observability/alerting_rules.yml`
+- `deploy/observability/alertmanager.yml`
 - `deploy/observability/grafana-datasources.yml`
 - `deploy/observability/grafana-dashboard.json`
 
@@ -31,6 +34,8 @@ ORCH_RATE_LIMIT_STORAGE_URL=redis://redis:6379/0
 ORCH_TOOL_SANDBOX_ENABLED=1
 ORCH_TOOL_SANDBOX_REQUIRED=1
 ORCH_SANDBOX_TOOL_DIR=/app/sandbox_tools
+ORCH_TOOL_POLICY_ENFORCE=1
+ORCH_TOOL_POLICY_PATH=/app/config/tool_policy.yaml
 ORCH_OTEL_ENABLED=1
 ORCH_OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4318/v1/traces
 ```

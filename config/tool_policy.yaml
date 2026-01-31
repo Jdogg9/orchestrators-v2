@@ -1,0 +1,22 @@
+# Tool policy rules (optional)
+# Enable with: ORCH_TOOL_POLICY_ENFORCE=1
+# Paths can be overridden via ORCH_TOOL_POLICY_PATH
+
+rules:
+  - match: "^echo$"
+    action: allow
+    reason: "allow_echo"
+    require_safe: true
+
+  - match: "^safe_calc$"
+    action: allow
+    reason: "allow_safe_calc"
+    require_safe: true
+
+  - match: "^python_eval$"
+    action: deny
+    reason: "deny_python_eval_by_default"
+
+  - match: ".*"
+    action: deny
+    reason: "default_deny"
