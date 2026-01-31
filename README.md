@@ -41,6 +41,16 @@ that demonstrate bounded context behavior and safe routing decisions:
 
 These metrics are Prometheus-compatible and can be surfaced in Grafana dashboards for audit readiness.
 
+## Security Transparency (Jan 2026 Remediation)
+
+Our Jan 2026 remediation cycle demonstrates reachability-first risk management without breaking routing integrity:
+
+- **Reachability analysis first**: vulnerabilities in unreachable code paths are logged as accepted risks to maintain deterministic behavior.
+- **Mitigation by architecture**: AST-safe evaluators, tool_policy.yaml validation, and sandboxed execution limit exploitability even when advisories exist.
+- **Audit-ready exports**: JSON-LD and PDF compliance reports include dependency health summaries tied to NIST Measure 2.1.
+
+This approach protects user data sovereignty by ensuring patches do not compromise safety invariants or leak runtime state.
+
 ## Why not LangGraph / CrewAI?
 
 No dunking—just different assumptions:

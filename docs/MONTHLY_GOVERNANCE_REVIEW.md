@@ -33,6 +33,10 @@
 - Tokenizer regression tests: [pass/fail]
 - Boundary verification: [pass/fail]
 
+### Reachability Verification (Required on Dependency Updates)
+- [ ] Run `pytest tests/test_summary_quality.py` after any dependency update.
+- [ ] Confirm summary confidence scores remain stable vs. last release notes.
+
 ## Actions & Follow-Ups
 - [ ] Action item 1
 - [ ] Action item 2
