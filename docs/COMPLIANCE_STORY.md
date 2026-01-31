@@ -54,6 +54,10 @@ with AI safety expectations in both EU and US frameworks by enforcing:
 - **Goal preservation**: system prompts and initial goals remain pinned.
 - **Transparent receipts**: token usage (input/output/utilization) is recorded in trace steps.
 - **Deterministic behavior**: pruning decisions are rule-based, not probabilistic.
+- **Semantic truncation**: prompt trims backtrack to sentence or header boundaries to
+	avoid fractured instructions while maintaining strict token budgets.
+- **Safety margins**: byte-level tokenizer fallback applies a conservative multiplier
+	so over-budget risks are minimized even when high-fidelity tokenizers are unavailable.
 
 ### EU AI Act (Risk Management)
 
@@ -72,6 +76,10 @@ for governance and oversight. Operators can audit:
 - context utilization over time,
 - adherence to token budgets,
 - and whether summary mode was triggered.
+
+Semantic truncation and fallback safety margins further reduce non-deterministic
+behavior by ensuring truncation remains coherent and token counts err on the
+side of caution.
 
 **Bottom line:** token-aware pruning makes the system’s memory management
 explicit, inspectable, and defensible during external audits.

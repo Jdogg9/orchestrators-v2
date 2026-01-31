@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import os
 import importlib.util
+import math
 from pathlib import Path
 from typing import Any, Dict, Optional
 
@@ -10,6 +11,7 @@ from typing import Any, Dict, Optional
 DEFAULT_TOKENIZER_DIR = str(
     Path(__file__).resolve().parents[2] / "ORCH_TOKENIZER" / "tokenizers"
 )
+DEFAULT_SAFETY_MARGIN = float(os.getenv("ORCH_TOKEN_SAFETY_MARGIN", "1.1"))
 
 
 class _ByteFallbackTokenizer:
@@ -118,17 +120,25 @@ def orch_tokenizer(
             }
         try:
             encoded = tokenizer.encode(text)
+            token_count = len(encoded)
+            safety_margin_applied = False
+            if fallback_error:
+                token_count = int(math.ceil(token_count * DEFAULT_SAFETY_MARGIN))
+                safety_margin_applied = True
             result: Dict[str, Any] = {
                 "status": "ok",
                 "action": action,
                 "model_name": model_name,
-                "token_count": len(encoded),
+                "token_count": token_count,
             }
             if action == "encode":
                 result["tokens"] = encoded
             if fallback_error:
                 result["warning"] = "fallback_tokenizer_used"
                 result["warning_detail"] = fallback_error
+            if safety_margin_applied:
+                result["safety_margin_applied"] = True
+                result["safety_margin"] = DEFAULT_SAFETY_MARGIN
             return result
         except Exception as exc:
             return {

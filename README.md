@@ -23,6 +23,24 @@ for a stable identity + routing + tools + optional memory, designed for *your* m
 - **Graceful degradation**: tokenizer fallback preserves safety logic even when optional dependencies are unavailable.
 - **Boundary-first posture**: public boundary verification is a first-class release gate.
 
+## Tokenization
+
+Token accounting uses a local-first tokenizer with a byte-level fallback to maintain safety even
+when optional dependencies are missing.
+
+**New for Jan 2026:** Now featuring Semantic Truncation and OTel-compatible Token Health telemetry.
+
+## Observability & Compliance
+
+Orchestrators-v2 aligns with NIST AI RMF expectations by providing measurable, exportable metrics
+that demonstrate bounded context behavior and safe routing decisions:
+
+- **Token utilization ratio** for context budget accountability.
+- **Tier transition counts** to show how often the router escalates to reasoner or summary modes.
+- **Semantic truncation delta** to prove instruction coherence under pruning pressure.
+
+These metrics are Prometheus-compatible and can be surfaced in Grafana dashboards for audit readiness.
+
 ## Why not LangGraph / CrewAI?
 
 No dunking—just different assumptions:

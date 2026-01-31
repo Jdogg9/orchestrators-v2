@@ -10,6 +10,13 @@ from typing import Any, Dict, Optional
 from sqlalchemy import text
 
 try:
+    from prometheus_client import Counter, Gauge, Histogram
+except ImportError:  # Optional dependency
+    Counter = None
+    Gauge = None
+    Histogram = None
+
+try:
     from opentelemetry import trace as otel_trace
 except ImportError:  # Optional dependency
     otel_trace = None
@@ -39,6 +46,14 @@ OTEL_TRACE_STEP_KEYS = {
     "otel_span_id",
     "traceparent",
 }
+
+_metrics_initialized = False
+_metrics_registry = None
+_token_utilization_ratio = None
+_pruning_events_total = None
+_summary_generation_latency = None
+_tier_transition_total = None
+_semantic_truncation_delta = None
 
 
 @dataclass
@@ -306,6 +321,78 @@ class TraceStore:
         tracer = otel_trace.get_tracer("orchestrators_v2.trace_steps")
         with tracer.start_as_current_span(f"trace_step.{step_type}", attributes=attributes):
             return
+
+
+def configure_tracer_metrics(registry) -> None:
+    global _metrics_initialized, _metrics_registry
+    global _token_utilization_ratio, _pruning_events_total, _summary_generation_latency
+    global _tier_transition_total, _semantic_truncation_delta
+    if Counter is None or Histogram is None or Gauge is None:
+        return
+    if _metrics_initialized:
+        return
+    _metrics_registry = registry
+    _token_utilization_ratio = Histogram(
+        "orch_token_utilization_ratio",
+        "Ratio of input tokens to configured budget",
+        registry=_metrics_registry,
+    )
+    _pruning_events_total = Counter(
+        "orch_pruning_events_total",
+        "Total token pruning events",
+        ["summary_added", "summary_forced"],
+        registry=_metrics_registry,
+    )
+    _summary_generation_latency = Histogram(
+        "orch_summary_generation_latency_seconds",
+        "Latency for Tier 3 summary generation",
+        registry=_metrics_registry,
+    )
+    _tier_transition_total = Counter(
+        "orch_tier_transition_total",
+        "Total tier selections for model routing",
+        ["tier"],
+        registry=_metrics_registry,
+    )
+    _semantic_truncation_delta = Gauge(
+        "orch_semantic_truncation_delta_tokens",
+        "Token delta between hard and semantic truncation",
+        registry=_metrics_registry,
+    )
+    _metrics_initialized = True
+
+
+def record_token_utilization_ratio(ratio: Optional[float]) -> None:
+    if ratio is None or _token_utilization_ratio is None:
+        return
+    _token_utilization_ratio.observe(ratio)
+
+
+def record_pruning_event(summary_added: bool, summary_forced: bool) -> None:
+    if _pruning_events_total is None:
+        return
+    _pruning_events_total.labels(
+        summary_added=str(summary_added).lower(),
+        summary_forced=str(summary_forced).lower(),
+    ).inc()
+
+
+def record_summary_generation_latency(seconds: float) -> None:
+    if _summary_generation_latency is None:
+        return
+    _summary_generation_latency.observe(seconds)
+
+
+def record_tier_transition(tier: str) -> None:
+    if _tier_transition_total is None:
+        return
+    _tier_transition_total.labels(tier=tier).inc()
+
+
+def record_semantic_truncation_delta(delta_tokens: int) -> None:
+    if _semantic_truncation_delta is None:
+        return
+    _semantic_truncation_delta.set(max(delta_tokens, 0))
 
 
 _tracer: Optional[TraceStore] = None

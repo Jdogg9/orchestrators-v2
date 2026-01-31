@@ -12,6 +12,7 @@ from flask_limiter.util import get_remote_address
 
 from src.orchestrator import Orchestrator
 from src.observability import init_otel, get_current_trace_context, get_current_traceparent
+from src.tracer import configure_tracer_metrics
 from src.http_routes import register_routes
 
 load_dotenv()
@@ -103,6 +104,8 @@ def create_app() -> Flask:
         "Total shadow-mode routing mismatches",
         registry=metrics_registry,
     )
+
+    configure_tracer_metrics(metrics_registry)
 
     app.config["ORCH_LIMITER"] = limiter
     app.config["ORCH_RATE_LIMIT"] = RATE_LIMIT

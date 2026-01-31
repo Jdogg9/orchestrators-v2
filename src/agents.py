@@ -4,12 +4,13 @@ from dataclasses import dataclass
 from pathlib import Path
 import logging
 import os
+import re
 from typing import Any, Dict, List, Optional
 
 import yaml
 
 from src.tools.orch_tokenizer import orch_tokenizer
-from src.tracer import get_tracer
+from src.tracer import get_tracer, record_semantic_truncation_delta
 
 logger = logging.getLogger("orchestrators_v2.agents")
 
@@ -175,11 +176,74 @@ def _truncate_to_tokens(text: str, max_tokens: int, model_name: str) -> str:
     if payload.get("status") != "ok":
         return ""
     tokens = payload.get("tokens", [])
+    if len(tokens) <= max_tokens:
+        return text.strip()
     truncated = tokens[:max_tokens]
     decoded = orch_tokenizer(action="decode", tokens=truncated, model_name=model_name)
-    if decoded.get("status") == "ok":
-        return str(decoded.get("text", "")).strip()
-    return ""
+    if decoded.get("status") != "ok":
+        return ""
+    hard_text = str(decoded.get("text", "")).strip()
+    semantic_text = _semantic_truncate_text(hard_text, truncated, model_name)
+    delta_tokens = _semantic_truncation_delta(truncated, semantic_text, model_name)
+    record_semantic_truncation_delta(delta_tokens)
+    return semantic_text
+
+
+def _semantic_truncate_text(text: str, tokens: List[int], model_name: str) -> str:
+    if not text:
+        return ""
+    window_size = min(50, len(tokens))
+    if window_size <= 0:
+        return text
+    window_tokens = tokens[-window_size:]
+    window_decoded = orch_tokenizer(action="decode", tokens=window_tokens, model_name=model_name)
+    if window_decoded.get("status") != "ok":
+        return text
+    window_text = str(window_decoded.get("text", ""))
+    if not window_text:
+        return text
+    boundary_index = _find_semantic_boundary(text, window_text)
+    if boundary_index is None:
+        return text
+    truncated = text[:boundary_index].rstrip()
+    return truncated if truncated else text
+
+
+def _find_semantic_boundary(full_text: str, window_text: str) -> Optional[int]:
+    base_index = max(len(full_text) - len(window_text), 0)
+    header_match = None
+    header_regex = re.compile(r"(^|\n)(#{1,6}\s+.+)")
+    for match in header_regex.finditer(window_text):
+        header_match = match
+    header_index = None
+    if header_match:
+        header_index = base_index + header_match.start(2)
+
+    sentence_match = None
+    for match in re.finditer(r"[.!?]", window_text):
+        sentence_match = match
+    sentence_index = None
+    if sentence_match:
+        sentence_index = base_index + sentence_match.end()
+
+    candidates = [idx for idx in (header_index, sentence_index) if idx is not None]
+    if not candidates:
+        return None
+    cut_index = max(candidates)
+    if cut_index <= 0:
+        return None
+    return cut_index
+
+
+def _semantic_truncation_delta(tokens: List[int], semantic_text: str, model_name: str) -> int:
+    if not tokens:
+        return 0
+    payload = orch_tokenizer(action="count", text=semantic_text, model_name=model_name)
+    if payload.get("status") == "ok":
+        semantic_tokens = int(payload.get("token_count", 0))
+    else:
+        semantic_tokens = max(1, len(semantic_text) // 4)
+    return max(len(tokens) - semantic_tokens, 0)
 
 
 def _record_prompt_guardrail(

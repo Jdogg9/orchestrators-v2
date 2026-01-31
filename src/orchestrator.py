@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+import time
 from typing import Any, Dict, List, Optional
 
 from src.advanced_router import ModelRouter, PolicyRouter
@@ -9,7 +10,13 @@ from src.llm_provider import get_provider
 from src.router import Rule, RuleRouter, RouteDecision
 from src.orchestrator_memory import apply_semantic_ambiguity_guard
 from src.semantic_router import SemanticRouter, SemanticMatch
-from src.tracer import get_tracer
+from src.tracer import (
+    get_tracer,
+    record_pruning_event,
+    record_summary_generation_latency,
+    record_tier_transition,
+    record_token_utilization_ratio,
+)
 from src.tool_registry import ToolRegistry, ToolSpec
 from src.tools.math import evaluate_expression, SafeMathError
 from src.tools.orch_tokenizer import orch_tokenizer
@@ -118,6 +125,7 @@ class Orchestrator:
                 tool_selected=False,
                 token_count=budget_info.get("input_tokens"),
             )
+            record_tier_transition(self._tier_for_model_decision(model_decision))
             provider = get_provider(model_override=model_decision.model)
             llm_response = provider.generate(messages)
             self._record_token_usage(trace_id, messages, llm_response.content, budget_info)
@@ -140,6 +148,19 @@ class Orchestrator:
             "model_decision": None,
             "semantic_candidates": semantic_candidates[:2],
         }
+
+    @staticmethod
+    def _tier_for_model_decision(model_decision) -> str:
+        if not model_decision:
+            return "unknown"
+        reason = str(model_decision.reason or "").lower()
+        if reason == "tier3_summary_required":
+            return "tier3"
+        if reason in {"tier1_overflow", "tier2_overflow", "analysis_request"}:
+            return "tier2"
+        if reason == "default_chat":
+            return "tier1"
+        return "tier1"
 
     def _load_router(self):
         policy_path = os.getenv("ORCH_ROUTER_POLICY_PATH", "config/router_policy.yaml")
@@ -285,8 +306,11 @@ class Orchestrator:
         output_tokens = self._count_tokens_for_text(assistant_content)
         budget_tokens = budget_info.get("budget_tokens")
         utilization = None
+        utilization_ratio = None
         if budget_tokens and input_tokens is not None:
             utilization = round((input_tokens / budget_tokens) * 100, 2)
+            utilization_ratio = input_tokens / budget_tokens
+        record_token_utilization_ratio(utilization_ratio)
         tracer.record_step(
             trace_id,
             "token_usage",
@@ -404,6 +428,7 @@ class Orchestrator:
                     "summary_forced": force_summary,
                 },
             )
+            record_pruning_event(info["summary_added"], force_summary)
 
         return messages, info
 
@@ -461,7 +486,9 @@ class Orchestrator:
             return ""
         from src.tools.summarize import summarize_text
 
+        start_time = time.time()
         summary_payload = summarize_text("\n".join(removed_text))
+        record_summary_generation_latency(time.time() - start_time)
         summary = summary_payload.get("summary", "") if isinstance(summary_payload, dict) else ""
         if summary:
             return f"Previous Context Summary: {summary}"
