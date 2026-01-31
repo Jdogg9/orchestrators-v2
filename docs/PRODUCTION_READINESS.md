@@ -16,6 +16,7 @@ This repo is a **reference implementation**. Below is a short, concrete checklis
 - **Tool policy engine (optional)**: Deterministic allow/deny rules via `config/tool_policy.yaml`.
 - **Storage upgrade (optional)**: Postgres support via `ORCH_DATABASE_URL`.
 - **Tracing**: OpenTelemetry support with OTLP exporter.
+- **Trace context propagation**: W3C `traceparent` echoed in responses for client-side trace pickup.
 - **Dashboards + alerting**: Prometheus/Grafana + Alertmanager config in `deploy/observability`.
 - **Secret scan in CI**: `scripts/secret_scan.sh` runs on every push/PR.
 - **Security automation**: Bandit + pip-audit (plus optional Semgrep/Trivy).

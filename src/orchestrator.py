@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import ast
 import os
 from typing import Any, Dict, List, Optional
 
@@ -8,6 +7,7 @@ from src.advanced_router import ModelRouter, PolicyRouter
 from src.llm_provider import get_provider
 from src.router import Rule, RuleRouter, RouteDecision
 from src.tool_registry import ToolRegistry, ToolSpec
+from scripts.safe_calc import safe_eval, SafeCalcError
 
 
 class Orchestrator:
@@ -105,32 +105,10 @@ class Orchestrator:
         )
 
     def _safe_calc(self, expression: str) -> float:
-        if not expression:
-            raise ValueError("missing_expression")
-        parsed = ast.parse(expression, mode="eval")
-        for node in ast.walk(parsed):
-            if not isinstance(
-                node,
-                (
-                    ast.Expression,
-                    ast.BinOp,
-                    ast.UnaryOp,
-                    ast.Num,
-                    ast.Constant,
-                    ast.Add,
-                    ast.Sub,
-                    ast.Mult,
-                    ast.Div,
-                    ast.Pow,
-                    ast.Mod,
-                    ast.USub,
-                    ast.UAdd,
-                    ast.Load,
-                    ast.FloorDiv,
-                ),
-            ):
-                raise ValueError("unsupported_expression")
-        return eval(compile(parsed, "<safe_calc>", "eval"), {"__builtins__": {}})
+        try:
+            return safe_eval(expression)
+        except SafeCalcError as exc:
+            raise ValueError(str(exc)) from exc
 
     def _build_tool_params(self, decision: RouteDecision, user_input: str) -> Dict[str, Any]:
         params = decision.params or {}
