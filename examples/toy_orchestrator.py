@@ -8,6 +8,7 @@ A minimal, runnable orchestrator demonstrating:
 - 1 router (intent detection)
 - 1 memory stub (conversation history)
 - 1 decision loop (orchestrate → execute → respond)
+- Safe math via AST-based evaluator (no eval)
 
 Run: python examples/toy_orchestrator.py
 
@@ -28,6 +29,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 from src.router import RuleRouter, Rule
 from src.tool_registry import ToolRegistry, ToolSpec
+from src.tools.math import evaluate_expression, SafeMathError
 
 
 class ToyMemory:
@@ -55,13 +57,12 @@ class ToyMemory:
 
 
 def calculator(expression: str) -> str:
-    """Evaluate math expression (UNSAFE - toy only!)"""
+    """Evaluate math expression using AST-safe evaluator."""
     try:
-        # WARNING: eval() is dangerous - toy example only!
-        result = eval(expression, {"__builtins__": {}}, {})
+        result = evaluate_expression(expression)
         return f"Result: {result}"
-    except Exception as e:
-        return f"Error: {str(e)}"
+    except SafeMathError as exc:
+        return f"Error: {str(exc)}"
 
 
 def echo(message: str) -> str:

@@ -43,7 +43,7 @@ def test_repo_facts_block_matches_expected():
         "- **Memory flags**: `ORCH_MEMORY_ENABLED`, `ORCH_MEMORY_CAPTURE_ENABLED`, `ORCH_MEMORY_WRITE_POLICY`, `ORCH_MEMORY_CAPTURE_TTL_MINUTES`, `ORCH_MEMORY_DB_PATH`",
         "- **SQLite tables**: `traces`, `trace_steps`, `memory_candidates`",
         "- **Memory decision taxonomy**: `allow:explicit_intent`, `allow:dedupe_update`, `allow:capture_only`, `deny:feature_disabled`, `deny:policy_write_disabled`, `deny:no_explicit_intent`, `deny:scrubbed_too_short`, `deny:sensitive_content`, `deny:error`",
-        "- **Toy example**: `examples/toy_orchestrator.py` uses `eval()` and includes `WARNING: eval() is dangerous - toy example only!`",
+        "- **Toy example**: `examples/toy_orchestrator.py` uses an AST-safe evaluator (no `eval`).",
         "- **Non-goals**: not a cloud/SaaS platform; no autonomous multi-agent planning in core (policy routing is deterministic)",
     ]
 
@@ -122,4 +122,4 @@ def test_toy_example_contains_eval_warning():
     toy_path = Path(__file__).resolve().parents[1] / "examples" / "toy_orchestrator.py"
     content = toy_path.read_text()
 
-    assert "WARNING: eval() is dangerous - toy example only!" in content
+    assert "Safe math via AST-based evaluator (no eval)" in content

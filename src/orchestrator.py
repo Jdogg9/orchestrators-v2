@@ -7,7 +7,7 @@ from src.advanced_router import ModelRouter, PolicyRouter
 from src.llm_provider import get_provider
 from src.router import Rule, RuleRouter, RouteDecision
 from src.tool_registry import ToolRegistry, ToolSpec
-from scripts.safe_calc import safe_eval, SafeCalcError
+from src.tools.math import evaluate_expression, SafeMathError
 
 
 class Orchestrator:
@@ -106,8 +106,8 @@ class Orchestrator:
 
     def _safe_calc(self, expression: str) -> float:
         try:
-            return safe_eval(expression)
-        except SafeCalcError as exc:
+            return evaluate_expression(expression)
+        except SafeMathError as exc:
             raise ValueError(str(exc)) from exc
 
     def _build_tool_params(self, decision: RouteDecision, user_input: str) -> Dict[str, Any]:

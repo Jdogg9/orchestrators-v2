@@ -42,7 +42,7 @@ a stable identity + routing + tools + optional memory, designed for *your* machi
 - **Memory flags**: `ORCH_MEMORY_ENABLED`, `ORCH_MEMORY_CAPTURE_ENABLED`, `ORCH_MEMORY_WRITE_POLICY`, `ORCH_MEMORY_CAPTURE_TTL_MINUTES`, `ORCH_MEMORY_DB_PATH`
 - **SQLite tables**: `traces`, `trace_steps`, `memory_candidates`
 - **Memory decision taxonomy**: `allow:explicit_intent`, `allow:dedupe_update`, `allow:capture_only`, `deny:feature_disabled`, `deny:policy_write_disabled`, `deny:no_explicit_intent`, `deny:scrubbed_too_short`, `deny:sensitive_content`, `deny:error`
-- **Toy example**: `examples/toy_orchestrator.py` uses `eval()` and includes `WARNING: eval() is dangerous - toy example only!`
+- **Toy example**: `examples/toy_orchestrator.py` uses an AST-safe evaluator (no `eval`).
 - **Non-goals**: not a cloud/SaaS platform; no autonomous multi-agent planning in core (policy routing is deterministic)
 <!-- REPO_FACTS_END -->
 
@@ -113,7 +113,7 @@ shellcheck -e SC2155 -e SC2046 -e SC2012 ./scripts/*.sh
 ```
 ```
 
-## Try the Toy Orchestrator (5 minutes)
+## Try the Orchestrator (5 minutes)
 
 A minimal, runnable example demonstrating the full pattern:
 
@@ -132,11 +132,14 @@ python examples/toy_orchestrator.py
 > memory   # Show conversation history
 ```
 
-**What you'll see**: Bounded memory (10 msg cap), decision traces (receipts), local-only execution (no network).
+**What you'll see**:
+* **Safe Math**: Calculations use an AST-safe evaluator (no `eval()`).
+* **Bounded Memory**: Conversation history is capped at 10 messages.
+* **Trace Receipts**: Every decision is logged with receipt-style traces.
 
 **Read more**: [examples/README.md](examples/README.md) for architecture walkthrough.
 
-⚠️ **Toy warning**: The calculator uses `eval()` by design for teaching. Do not reuse it in production. See [docs/SAFE_CALCULATOR.md](docs/SAFE_CALCULATOR.md) for an AST-based alternative.
+✅ **Safe Math**: The calculator uses a restricted AST-based evaluator (no `eval`) to prevent code injection. See [docs/SAFE_CALCULATOR.md](docs/SAFE_CALCULATOR.md).
 
 ## Example Orchestrator Loop
 
