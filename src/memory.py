@@ -7,6 +7,9 @@ from datetime import datetime, timezone, timedelta
 from pathlib import Path
 from typing import Any, Dict, Optional
 
+from sqlalchemy import text
+
+from src.db import get_engine
 from src.tracer import get_tracer
 
 DEFAULT_MEMORY_DB = "instance/orchestrator_core.db"
@@ -102,6 +105,29 @@ def _ensure_memory_candidates_schema(conn: sqlite3.Connection) -> None:
     )
 
 
+def _ensure_memory_candidates_schema_sql(conn) -> None:
+    conn.execute(
+        text(
+            """
+            CREATE TABLE IF NOT EXISTS memory_candidates (
+                id TEXT PRIMARY KEY,
+                user_id_hash TEXT NOT NULL,
+                conversation_id TEXT,
+                scope TEXT NOT NULL,
+                content TEXT NOT NULL,
+                content_hash TEXT NOT NULL,
+                created_at TEXT NOT NULL,
+                last_seen_at TEXT NOT NULL,
+                ttl_minutes INTEGER NOT NULL,
+                expires_at TEXT NOT NULL,
+                source TEXT,
+                passes INTEGER DEFAULT 0
+            )
+            """
+        )
+    )
+
+
 def _record_memory_write_decision(trace_id: Optional[str], **payload: Any) -> None:
     reason = payload.get("reason")
     if reason and reason not in ALLOWED_DECISION_REASONS:
@@ -192,12 +218,28 @@ def capture_candidate_memory(
         )
         return None
 
-    memory_db = _memory_db_path()
-    Path(memory_db).parent.mkdir(parents=True, exist_ok=True)
-
     content_hash = hashlib.sha256(scrubbed.encode()).hexdigest()[:16]
     now = datetime.now(timezone.utc)
     expires_at = now + timedelta(minutes=int(_env_value("ORCH_MEMORY_CAPTURE_TTL_MINUTES", "180")))
+
+    engine = get_engine()
+    if engine:
+        return _capture_candidate_memory_sql(
+            engine=engine,
+            user_id_hash=user_id_hash,
+            conversation_id=conversation_id,
+            scope=scope,
+            source=source,
+            scrubbed=scrubbed,
+            content_hash=content_hash,
+            now=now,
+            expires_at=expires_at,
+            write_policy=write_policy,
+            trace_id=trace_id,
+        )
+
+    memory_db = _memory_db_path()
+    Path(memory_db).parent.mkdir(parents=True, exist_ok=True)
 
     conn = sqlite3.connect(memory_db)
     try:
@@ -291,3 +333,129 @@ def capture_candidate_memory(
         return None
     finally:
         conn.close()
+
+
+def _capture_candidate_memory_sql(
+    *,
+    engine,
+    user_id_hash: str,
+    conversation_id: Optional[str],
+    scope: str,
+    source: str,
+    scrubbed: str,
+    content_hash: str,
+    now: datetime,
+    expires_at: datetime,
+    write_policy: str,
+    trace_id: Optional[str],
+) -> Optional[str]:
+    cutoff = now - timedelta(hours=24)
+    try:
+        with engine.begin() as conn:
+            _ensure_memory_candidates_schema_sql(conn)
+            existing = conn.execute(
+                text(
+                    """
+                    SELECT id, passes FROM memory_candidates
+                    WHERE user_id_hash = :user_id_hash
+                      AND scope = :scope
+                      AND content_hash = :content_hash
+                      AND last_seen_at > :cutoff
+                    LIMIT 1
+                    """
+                ),
+                {
+                    "user_id_hash": user_id_hash,
+                    "scope": scope,
+                    "content_hash": content_hash,
+                    "cutoff": cutoff.isoformat(),
+                },
+            ).fetchone()
+
+            if existing:
+                candidate_id, passes = existing
+                conn.execute(
+                    text(
+                        """
+                        UPDATE memory_candidates
+                        SET last_seen_at = :last_seen_at,
+                            passes = :passes,
+                            expires_at = :expires_at
+                        WHERE id = :candidate_id
+                        """
+                    ),
+                    {
+                        "last_seen_at": now.isoformat(),
+                        "passes": (passes or 0) + 1,
+                        "expires_at": expires_at.isoformat(),
+                        "candidate_id": candidate_id,
+                    },
+                )
+                _record_memory_write_decision(
+                    trace_id,
+                    decision="allow",
+                    reason="allow:dedupe_update",
+                    explicit_intent=True,
+                    write_policy=write_policy,
+                    scrub_applied=True,
+                    ttl_minutes=int(_env_value("ORCH_MEMORY_CAPTURE_TTL_MINUTES", "180")),
+                    scope=scope,
+                    source=source,
+                    candidate_id_hash=hashlib.sha256(candidate_id.encode()).hexdigest()[:12],
+                )
+                return candidate_id
+
+            candidate_id = str(uuid.uuid4())
+            conn.execute(
+                text(
+                    """
+                    INSERT INTO memory_candidates (
+                        id, user_id_hash, conversation_id, scope, content, content_hash,
+                        created_at, last_seen_at, ttl_minutes, expires_at, source, passes
+                    ) VALUES (
+                        :id, :user_id_hash, :conversation_id, :scope, :content, :content_hash,
+                        :created_at, :last_seen_at, :ttl_minutes, :expires_at, :source, :passes
+                    )
+                    """
+                ),
+                {
+                    "id": candidate_id,
+                    "user_id_hash": user_id_hash,
+                    "conversation_id": conversation_id,
+                    "scope": scope,
+                    "content": scrubbed,
+                    "content_hash": content_hash,
+                    "created_at": now.isoformat(),
+                    "last_seen_at": now.isoformat(),
+                    "ttl_minutes": int(_env_value("ORCH_MEMORY_CAPTURE_TTL_MINUTES", "180")),
+                    "expires_at": expires_at.isoformat(),
+                    "source": source,
+                    "passes": 1,
+                },
+            )
+            _record_memory_write_decision(
+                trace_id,
+                decision="allow",
+                reason="allow:explicit_intent" if write_policy == "strict" else "allow:capture_only",
+                explicit_intent=True,
+                write_policy=write_policy,
+                scrub_applied=True,
+                ttl_minutes=int(_env_value("ORCH_MEMORY_CAPTURE_TTL_MINUTES", "180")),
+                scope=scope,
+                source=source,
+                candidate_id_hash=hashlib.sha256(candidate_id.encode()).hexdigest()[:12],
+            )
+            return candidate_id
+    except Exception:
+        _record_memory_write_decision(
+            trace_id,
+            decision="deny",
+            reason="deny:error",
+            explicit_intent=True,
+            write_policy=write_policy,
+            scrub_applied=True,
+            ttl_minutes=int(_env_value("ORCH_MEMORY_CAPTURE_TTL_MINUTES", "180")),
+            scope=scope,
+            source=source,
+        )
+        return None

@@ -51,8 +51,8 @@ class OllamaProvider(LLMProvider):
             return False, f"ollama error: {exc}"
 
 
-def get_provider() -> LLMProvider:
+def get_provider(model_override: str | None = None) -> LLMProvider:
     provider = os.getenv("ORCH_LLM_PROVIDER", "ollama").lower()
     if provider == "ollama":
-        return OllamaProvider()
+        return OllamaProvider(model=model_override)
     raise ValueError(f"Unsupported LLM provider: {provider}")

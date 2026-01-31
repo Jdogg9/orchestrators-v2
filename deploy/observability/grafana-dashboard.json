@@ -1,0 +1,30 @@
+{
+  "title": "Orchestrators V2",
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "version": 1,
+  "panels": [
+    {
+      "type": "stat",
+      "title": "Total Requests",
+      "targets": [
+        {
+          "expr": "sum(orch_requests_total)",
+          "refId": "A"
+        }
+      ],
+      "gridPos": {"x": 0, "y": 0, "w": 12, "h": 6}
+    },
+    {
+      "type": "timeseries",
+      "title": "Request Latency (p95)",
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.95, sum(rate(orch_request_latency_seconds_bucket[5m])) by (le))",
+          "refId": "B"
+        }
+      ],
+      "gridPos": {"x": 12, "y": 0, "w": 12, "h": 6}
+    }
+  ]
+}

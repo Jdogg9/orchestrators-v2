@@ -9,17 +9,21 @@ This repo is a **reference implementation**. Below is a short, concrete checklis
 - **Readiness endpoint**: `/ready` gate for dependency health.
 - **Metrics endpoint**: `/metrics` for Prometheus scraping (toggleable).
 - **Request controls**: Max request size and basic rate limiting.
-   - **Note**: Rate limiting defaults to in-memory storage (best-effort). Configure a real backend (e.g., Redis) for production.
+- **Rate limiting backend**: Optional Redis storage via `ORCH_RATE_LIMIT_STORAGE_URL`.
 - **Structured logs**: JSON logging with request IDs and latency.
+- **Advanced routing (optional)**: Policy-driven router via `config/router_policy.yaml`.
+- **Sandboxed tools (optional)**: Docker-based execution for unsafe tools.
+- **Storage upgrade (optional)**: Postgres support via `ORCH_DATABASE_URL`.
+- **Tracing**: OpenTelemetry support with OTLP exporter.
 - **Secret scan in CI**: `scripts/secret_scan.sh` runs on every push/PR.
+- **Security automation**: Bandit + pip-audit in CI via `scripts/security_scan.sh`.
 
 ## Gaps (Intentional)
 
-- **Tool execution policy**: Only minimal registry exists. No policy engine, quotas, or sandbox.
-- **Advanced routing**: Rule router only; no planning, cost tracking, or multi-agent coordination.
-- **Storage scaling**: SQLite is default; no distributed tracing or replicated storage.
-- **Ops surface**: No SLO dashboards, incident runbooks, or live paging integration.
-- **Security controls**: Boundary + tests only; no SAST/DAST integration beyond local secret scan.
+- **Tool policy depth**: No fine-grained, user-scoped policy engine or quotas for sandboxed tools.
+- **Routing depth**: Policy router is deterministic but does not do cost or reinforcement learning.
+- **Observability stack**: Requires external collectors/dashboards to be wired (Prometheus/Grafana/Otel).
+- **Security controls**: No DAST or signed-commit enforcement by default.
 
 ## Recommended Hardening Steps
 

@@ -1,0 +1,3 @@
+[bandit]
+exclude: tests,examples
+skips: B101

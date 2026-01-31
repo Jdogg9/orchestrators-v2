@@ -11,6 +11,9 @@ echo "==> Boundary check"
 echo "==> Secret scan"
 ./scripts/secret_scan.sh
 
+echo "==> Security automation"
+./scripts/security_scan.sh
+
 echo "==> Pytest"
 pytest -q
 

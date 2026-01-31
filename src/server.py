@@ -11,12 +11,15 @@ from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 
 from src.orchestrator_memory import evaluate_memory_capture
+from src.orchestrator import Orchestrator
 from src.llm_provider import get_provider
+from src.observability import init_otel
 from src.tracer import get_tracer
 
 load_dotenv()
 
 app = Flask(__name__)
+init_otel(app)
 
 MAX_REQUEST_BYTES = int(os.getenv("ORCH_MAX_REQUEST_BYTES", "1048576"))
 app.config["MAX_CONTENT_LENGTH"] = MAX_REQUEST_BYTES
@@ -47,7 +50,17 @@ if not logger.handlers:
 
 RATE_LIMIT_ENABLED = os.getenv("ORCH_RATE_LIMIT_ENABLED", "1") == "1"
 RATE_LIMIT = os.getenv("ORCH_RATE_LIMIT", "60 per minute")
-limiter = Limiter(app=app, key_func=get_remote_address, default_limits=[RATE_LIMIT]) if RATE_LIMIT_ENABLED else None
+RATE_LIMIT_STORAGE_URL = os.getenv("ORCH_RATE_LIMIT_STORAGE_URL")
+limiter = (
+    Limiter(
+        app=app,
+        key_func=get_remote_address,
+        default_limits=[RATE_LIMIT],
+        storage_uri=RATE_LIMIT_STORAGE_URL,
+    )
+    if RATE_LIMIT_ENABLED
+    else None
+)
 
 METRICS_REGISTRY = CollectorRegistry(auto_describe=True)
 REQUEST_COUNT = Counter(
@@ -68,6 +81,8 @@ ERROR_COUNT = Counter(
     ["route", "method", "status"],
     registry=METRICS_REGISTRY,
 )
+
+orchestrator = Orchestrator()
 
 
 @app.before_request
@@ -197,24 +212,35 @@ def chat_completions():
         trace_id=trace_id,
     )
     
-    use_llm = os.getenv("ORCH_LLM_ENABLED", "0") == "1"
-    if use_llm:
-        try:
-            provider = get_provider()
-            llm_response = provider.generate(messages)
-            assistant_content = llm_response.content
-        except Exception as exc:
-            return jsonify({
-                "error": {
-                    "message": f"LLM provider error: {exc}",
-                    "type": "provider_error",
-                    "code": 502,
-                },
-                "memory_decision": memory_decision,
-            }), 502
+    orch_mode = os.getenv("ORCH_ORCHESTRATOR_MODE", "basic")
+    if orch_mode == "advanced":
+        result = orchestrator.handle(messages)
+        assistant_content = result["assistant_content"]
+        model_decision = result.get("model_decision")
+        tool_result = result.get("tool_result")
+        route_decision = result.get("route_decision")
     else:
-        # Minimal stub: echo last user message. Replace with real routing/provider calls.
-        assistant_content = f"[ORCHESTRATORS_V2 stub] You said: {content}"
+        use_llm = os.getenv("ORCH_LLM_ENABLED", "0") == "1"
+        model_decision = None
+        tool_result = None
+        route_decision = None
+        if use_llm:
+            try:
+                provider = get_provider()
+                llm_response = provider.generate(messages)
+                assistant_content = llm_response.content
+            except Exception as exc:
+                return jsonify({
+                    "error": {
+                        "message": f"LLM provider error: {exc}",
+                        "type": "provider_error",
+                        "code": 502,
+                    },
+                    "memory_decision": memory_decision,
+                }), 502
+        else:
+            # Minimal stub: echo last user message. Replace with real routing/provider calls.
+            assistant_content = f"[ORCHESTRATORS_V2 stub] You said: {content}"
 
     return jsonify({
         "id": "orch_v2_stub",
@@ -226,7 +252,29 @@ def chat_completions():
         }],
         "request_id": trace_id or getattr(g, "request_id", None),
         "memory_decision": memory_decision,
+        "route_decision": route_decision.__dict__ if route_decision else None,
+        "model_decision": model_decision.__dict__ if model_decision else None,
+        "tool_result": tool_result,
     })
+
+
+@app.post("/v1/tools/execute")
+@_limit_route
+def tools_execute():
+    if not _api_enabled():
+        return jsonify({"error": {"message": "API disabled", "type": "service_unavailable", "code": 503}}), 503
+    ok, err = require_bearer()
+    if not ok:
+        return jsonify(err), 401
+
+    payload = request.get_json(force=True, silent=False) or {}
+    tool_name = payload.get("name")
+    tool_args = payload.get("args") or {}
+    if not tool_name:
+        return jsonify({"error": {"message": "Tool name required", "type": "validation_error", "code": 400}}), 400
+
+    result = orchestrator.registry.execute(tool_name, **tool_args)
+    return jsonify({"result": result})
 
 if __name__ == "__main__":
     port = int(os.getenv("ORCH_PORT", "8088"))

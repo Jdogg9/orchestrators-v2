@@ -2,6 +2,9 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from typing import Any, Callable, Dict, List, Optional
+import os
+
+from src.sandbox import SandboxRunner
 
 
 @dataclass(frozen=True)
@@ -10,6 +13,7 @@ class ToolSpec:
     description: str
     handler: Callable[..., Any]
     safe: bool = True
+    sandbox_command: Optional[List[str]] = None
 
 
 class ToolRegistry:
@@ -17,6 +21,7 @@ class ToolRegistry:
 
     def __init__(self) -> None:
         self._tools: Dict[str, ToolSpec] = {}
+        self._sandbox = SandboxRunner()
 
     def register(self, tool: ToolSpec) -> None:
         if tool.name in self._tools:
@@ -34,6 +39,21 @@ class ToolRegistry:
         if not tool:
             return {"status": "error", "error": f"unknown_tool:{name}"}
         try:
+            if not tool.safe:
+                if os.getenv("ORCH_TOOL_SANDBOX_REQUIRED", "1") == "1":
+                    if not tool.sandbox_command:
+                        return {"status": "error", "tool": name, "error": "sandbox_command_missing"}
+                    sandbox_result = self._sandbox.run(tool.sandbox_command, kwargs)
+                    if sandbox_result.status != "ok":
+                        return {
+                            "status": "error",
+                            "tool": name,
+                            "error": sandbox_result.stderr or "sandbox_failed",
+                            "exit_code": sandbox_result.exit_code,
+                        }
+                    return {"status": "ok", "tool": name, "result": sandbox_result.stdout}
+                return {"status": "error", "tool": name, "error": "sandbox_required"}
+
             result = tool.handler(**kwargs)
             return {"status": "ok", "tool": name, "result": result}
         except Exception as exc:  # pragma: no cover - defensive

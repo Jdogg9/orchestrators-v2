@@ -1,0 +1,13 @@
+rules:
+  - match: "\bcalc(ulate)?\b|\bmath\b"
+    tool: "safe_calc"
+    params:
+      expression_key: "expression"
+    confidence: 0.9
+    reason: "math_expression"
+  - match: "\becho\b"
+    tool: "echo"
+    params:
+      message_key: "message"
+    confidence: 0.6
+    reason: "echo_keyword"

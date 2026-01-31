@@ -21,12 +21,16 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
+          pip install bandit pip-audit
 
       - name: Verify public boundary
         run: ./scripts/verify_public_boundary.sh
 
       - name: Secret scan
         run: ./scripts/secret_scan.sh
+
+      - name: Security automation
+        run: ORCH_SECURITY_STRICT=1 ./scripts/security_scan.sh
 
       - name: Repo Facts fast gate
         run: pytest -q -k "repo_facts"
