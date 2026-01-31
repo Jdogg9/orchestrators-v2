@@ -104,7 +104,8 @@ These layers shift the system from “works” to “safe to leave unattended.�
   Private repo containing identity, runtime state, and battle-tested iterations.
 
 - **v2 (ORCHESTRATORS_V2)**: Sanitized, reproducible privacy-first framework with safety-first defaults and boundary verification.
-  This repo is designed for "bring-your-own-identity" and **does not** ship private prompts, runtime state, DBs, recall frames, or tokens.
+  This repo is the **V2.0 Stable baseline** for production-oriented orchestration and "bring-your-own-identity" deployments.
+  It **does not** ship private prompts, runtime state, DBs, recall frames, or tokens.
 
 If you want conceptual background + earlier experiments, v1 is the source.
 If you want the safe public baseline to fork and extend, **use v2**.
