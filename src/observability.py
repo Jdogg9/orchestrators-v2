@@ -54,3 +54,21 @@ def get_current_trace_context() -> dict[str, str] | None:
         "trace_id": f"{ctx.trace_id:032x}",
         "span_id": f"{ctx.span_id:016x}",
     }
+
+
+def get_current_traceparent() -> str | None:
+    if os.getenv("ORCH_OTEL_ENABLED", "0") != "1":
+        return None
+
+    span = trace.get_current_span()
+    if not span:
+        return None
+
+    ctx = span.get_span_context()
+    if not ctx or not ctx.is_valid:
+        return None
+
+    trace_id = f"{ctx.trace_id:032x}"
+    span_id = f"{ctx.span_id:016x}"
+    flags = f"{int(ctx.trace_flags):02x}"
+    return f"00-{trace_id}-{span_id}-{flags}"

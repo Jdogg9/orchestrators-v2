@@ -13,7 +13,7 @@ from flask_limiter.util import get_remote_address
 from src.orchestrator_memory import evaluate_memory_capture
 from src.orchestrator import Orchestrator
 from src.llm_provider import get_provider
-from src.observability import init_otel, get_current_trace_context
+from src.observability import init_otel, get_current_trace_context, get_current_traceparent
 from src.agents import get_agent, list_agents, inject_agent_prompt
 from src.tracer import get_tracer
 
@@ -123,6 +123,10 @@ def finalize_request(response):
     request_id = getattr(g, "request_id", None)
     if request_id:
         response.headers["X-Request-ID"] = request_id
+    traceparent = get_current_traceparent()
+    if traceparent:
+        response.headers["traceparent"] = traceparent
+        response.headers.setdefault("X-Trace-Id", traceparent.split("-")[1])
     route = request.path
     method = request.method
     status = str(response.status_code)
