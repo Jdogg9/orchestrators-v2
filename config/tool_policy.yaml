@@ -13,9 +13,21 @@ rules:
     reason: "allow_safe_calc"
     require_safe: true
 
+  # Conditional approvals (example): allow python_exec only for short inputs.
+  # - match: "^python_exec$"
+  #   action: allow
+  #   reason: "allow_python_exec_short_input"
+  #   conditions:
+  #     input_param: "code"
+  #     max_input_len: 500
+
   - match: "^python_eval$"
     action: deny
     reason: "deny_python_eval_by_default"
+
+  - match: "^python_exec$"
+    action: deny
+    reason: "deny_python_exec_by_default"
 
   - match: ".*"
     action: deny

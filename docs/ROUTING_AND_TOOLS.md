@@ -8,6 +8,7 @@ This repo ships a minimal **tool registry**, **rule router**, and an optional **
 - `execute()` returns a structured result (`status`, `result` or `error`).
 - Unsafe tools can be forced through a Docker sandbox via `ORCH_TOOL_SANDBOX_ENABLED`.
 - Optional policy enforcement uses `PolicyEngine` with `ORCH_TOOL_POLICY_ENFORCE`.
+- Unsafe tools such as `python_eval` and `python_exec` only run in Docker when `ORCH_TOOL_SANDBOX_REQUIRED=1`.
 
 ### Example
 ```python
@@ -76,6 +77,7 @@ See [examples/toy_orchestrator.py](../examples/toy_orchestrator.py).
 - Deterministic allow/deny rules loaded from `config/tool_policy.yaml`.
 - Enable enforcement via `ORCH_TOOL_POLICY_ENFORCE=1`.
 - Default policy can deny unsafe tools while allowing known safe handlers.
+- Policy rules can include conditional checks on tool inputs (length limits).
 
 ### Example
 ```python
@@ -85,11 +87,52 @@ engine = PolicyEngine.from_env()
 decision = engine.check("python_eval", safe=False)
 ```
 
+### Conditional approvals (length-gated)
+
+You can gate tool access on input size. This is useful for risky tools such as
+`python_exec`.
+
+```yaml
+- match: "^python_exec$"
+    action: allow
+    reason: "allow_python_exec_short_input"
+    conditions:
+        input_param: "code"
+        max_input_len: 500
+```
+
+If the condition fails, the rule is skipped and the next rule applies (usually
+`default_deny`).
+
 ## Policy Router (src/advanced_router.py)
 
 - Policy rules live in `config/router_policy.yaml`.
 - Regex-driven matching with explicit confidence + reasons.
 - Deterministic and auditable for high-stakes use.
+
+## Semantic Router (src/semantic_router.py)
+
+Optional fallback router that uses embeddings to match user intent to tool descriptions **only when deterministic routing fails**.
+
+### Behavior
+- Runs after the rule/policy routers return `no_match`.
+- Embeds the user input and tool descriptions via Ollama embeddings.
+- Routes to the best match if `score >= ORCH_SEMANTIC_ROUTER_MIN_SIMILARITY`.
+- Disabled by default for deterministic guarantees.
+
+### Policy Enforcement for Semantic Decisions
+
+Semantic routing only proposes a tool. Actual execution is still governed by
+`config/tool_policy.yaml` via `PolicyEngine`. If the policy denies the tool
+(for example, `python_exec` is denied by default), the request is blocked even
+when a semantic match occurs.
+
+### Flags
+- `ORCH_SEMANTIC_ROUTER_ENABLED` (default: `0`)
+- `ORCH_SEMANTIC_ROUTER_MIN_SIMILARITY` (default: `0.80`)
+- `ORCH_SEMANTIC_ROUTER_EMBED_MODEL` (default: `nomic-embed-text:latest`)
+- `ORCH_SEMANTIC_ROUTER_OLLAMA_URL` (default: `http://127.0.0.1:11434`)
+- `ORCH_SEMANTIC_ROUTER_TIMEOUT_SEC` (default: `10`)
 
 ## Extension Path
 

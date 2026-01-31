@@ -25,6 +25,17 @@ a stable identity + routing + tools + optional memory, designed for *your* machi
 - A cloud/SaaS platform (this runs locally only)
 - A magic model (requires Ollama/OpenAI/etc.)
 
+## V2.0 Stable: Defensive AI Engineering
+
+This release hardens the orchestrator with confidence-gated routing and policy-enforced execution.
+
+- **Semantic Ambiguity Guard**: blocks unclear intent when top candidates are too close.
+- **Conditional Approvals**: length-gated tool access in `tool_policy.yaml` prevents oversized/malicious inputs.
+- **Top-K Diagnostics**: traces now record the highest semantic matches for auditability.
+- **Hardened Sandbox**: `python_exec` runs isolated with strict resource limits.
+
+These layers shift the system from “works” to “safe to leave unattended.”
+
 ## Repo Facts (checked by tests)
 <!-- REPO_FACTS_START -->
 - **Server routes**: `/health`, `/ready`, `/metrics`, `/echo`, `/v1/chat/completions`, `/v1/tools/execute`, `/v1/agents`, `/v1/agents/<name>`, `/v1/agents/<name>/chat`
@@ -34,6 +45,7 @@ a stable identity + routing + tools + optional memory, designed for *your* machi
 - **LLM flags**: `ORCH_LLM_ENABLED`, `ORCH_LLM_PROVIDER`, `ORCH_OLLAMA_URL`, `ORCH_MODEL_CHAT`, `ORCH_LLM_TIMEOUT_SEC`, `ORCH_LLM_HEALTH_TIMEOUT_SEC`
 - **Safety flags**: `ORCH_MAX_REQUEST_BYTES`, `ORCH_RATE_LIMIT_ENABLED`, `ORCH_RATE_LIMIT`, `ORCH_RATE_LIMIT_STORAGE_URL`, `ORCH_LOG_JSON`, `ORCH_LOG_LEVEL`, `ORCH_METRICS_ENABLED`
 - **Routing flags**: `ORCH_ORCHESTRATOR_MODE`, `ORCH_ROUTER_POLICY_PATH`
+- **Semantic routing flags**: `ORCH_SEMANTIC_ROUTER_ENABLED`, `ORCH_SEMANTIC_ROUTER_MIN_SIMILARITY`, `ORCH_SEMANTIC_ROUTER_EMBED_MODEL`, `ORCH_SEMANTIC_ROUTER_OLLAMA_URL`, `ORCH_SEMANTIC_ROUTER_TIMEOUT_SEC`
 - **DB flags**: `ORCH_DATABASE_URL`, `ORCH_DB_POOL_RECYCLE`
 - **Sandbox flags**: `ORCH_TOOL_SANDBOX_ENABLED`, `ORCH_TOOL_SANDBOX_REQUIRED`, `ORCH_SANDBOX_IMAGE`, `ORCH_SANDBOX_TIMEOUT_SEC`, `ORCH_SANDBOX_MEMORY_MB`, `ORCH_SANDBOX_CPU`, `ORCH_SANDBOX_TOOL_DIR`
 - **Tool policy flags**: `ORCH_TOOL_POLICY_ENFORCE`, `ORCH_TOOL_POLICY_PATH`
@@ -110,6 +122,12 @@ pytest -q
 
 # Optional: run script lint locally if you have shellcheck installed
 shellcheck -e SC2155 -e SC2046 -e SC2012 ./scripts/*.sh
+```
+
+**Targeted safety tests (semantic routing + sandbox):**
+
+```bash
+pytest -q tests/test_semantic_router.py tests/test_sandbox.py tests/test_tool_policy_conditions.py
 ```
 ```
 
@@ -200,6 +218,7 @@ Server runs on `http://127.0.0.1:8088` and stays local-only by default.
 - [Architecture](docs/ARCHITECTURE.md) - Layer design (API → orchestrator → tools → persistence)
 - [Threat Model](docs/THREAT_MODEL.md) - Security stance and mitigations
 - [Routing & Tools](docs/ROUTING_AND_TOOLS.md) - Tool registry + rule routing patterns
+- [Semantic Router Operator Guide](docs/SEMANTIC_ROUTER_OPERATIONS.md) - Tuning guidance and trace queries
 - [Production Readiness](docs/PRODUCTION_READINESS.md) - Gaps and hardening checklist
 - [Production Deployment](docs/PRODUCTION_DEPLOYMENT.md) - High-stakes stack
 - [Security Governance](docs/SECURITY_GOVERNANCE.md) - Signed commits, branch protections, dynamic scans

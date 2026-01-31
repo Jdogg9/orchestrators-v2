@@ -6,6 +6,7 @@ from typing import Any, Dict, List, Optional
 from src.advanced_router import ModelRouter, PolicyRouter
 from src.llm_provider import get_provider
 from src.router import Rule, RuleRouter, RouteDecision
+from src.semantic_router import SemanticRouter
 from src.tool_registry import ToolRegistry, ToolSpec
 from src.tools.math import evaluate_expression, SafeMathError
 
@@ -18,10 +19,16 @@ class Orchestrator:
         self._register_default_tools()
         self.router = self._load_router()
         self.model_router = ModelRouter()
+        self.semantic_router = SemanticRouter.from_env(self.registry.list_tools())
 
     def handle(self, messages: List[Dict[str, str]]) -> Dict[str, Any]:
         user_input = self._last_user_message(messages)
         decision = self.router.route(user_input)
+        semantic_candidates = []
+        if not decision.tool and self.semantic_router.enabled:
+            semantic_decision, semantic_candidates = self.semantic_router.route_with_diagnostics(user_input)
+            if semantic_decision.tool:
+                decision = semantic_decision
 
         if decision.tool:
             params = self._build_tool_params(decision, user_input)
@@ -31,6 +38,7 @@ class Orchestrator:
                 "route_decision": decision,
                 "tool_result": tool_result,
                 "model_decision": None,
+                "semantic_candidates": semantic_candidates[:2],
             }
 
         if os.getenv("ORCH_LLM_ENABLED", "0") == "1":
@@ -42,6 +50,7 @@ class Orchestrator:
                 "route_decision": decision,
                 "tool_result": None,
                 "model_decision": model_decision,
+                "semantic_candidates": semantic_candidates[:2],
             }
 
         return {
@@ -49,6 +58,7 @@ class Orchestrator:
             "route_decision": decision,
             "tool_result": None,
             "model_decision": None,
+            "semantic_candidates": semantic_candidates[:2],
         }
 
     def _load_router(self):
@@ -103,6 +113,15 @@ class Orchestrator:
                 sandbox_command=["python", "/tools/python_eval.py"],
             )
         )
+        self.registry.register(
+            ToolSpec(
+                name="python_exec",
+                description="Execute multi-line Python scripts inside a locked-down sandbox",
+                handler=lambda **_: "sandbox_required",
+                safe=False,
+                sandbox_command=["python", "/tools/python_exec.py"],
+            )
+        )
 
     def _safe_calc(self, expression: str) -> float:
         try:
@@ -118,6 +137,10 @@ class Orchestrator:
             return {params["message_key"]: self._strip_prefix(user_input, "echo")}
         if decision.tool == "safe_calc":
             return {"expression": self._strip_prefix(user_input, "calc")}
+        if decision.tool == "python_eval":
+            return {"expression": user_input}
+        if decision.tool == "python_exec":
+            return {"code": user_input}
         if decision.tool == "echo":
             return {"message": self._strip_prefix(user_input, "echo")}
         return {"input": user_input}

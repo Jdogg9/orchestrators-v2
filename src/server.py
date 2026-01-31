@@ -217,11 +217,27 @@ def _resolve_orchestrator_response(messages):
         model_decision = result.get("model_decision")
         tool_result = result.get("tool_result")
         route_decision = result.get("route_decision")
+            semantic_candidates = result.get("semantic_candidates") or []
+        else:
+            use_llm = os.getenv("ORCH_LLM_ENABLED", "0") == "1"
+            model_decision = None
+            tool_result = None
+            route_decision = None
+            semantic_candidates = []
+            if use_llm:
+                provider = get_provider()
+                llm_response = provider.generate(messages)
+                assistant_content = llm_response.content
+            else:
+                last = next((m for m in reversed(messages) if m.get("role") == "user"), {})
+                content = last.get("content", "")
+                assistant_content = f"[ORCHESTRATORS_V2 stub] You said: {content}"
     else:
         use_llm = os.getenv("ORCH_LLM_ENABLED", "0") == "1"
         model_decision = None
         tool_result = None
         route_decision = None
+        semantic_candidates = []
         if use_llm:
             provider = get_provider()
             llm_response = provider.generate(messages)
@@ -231,7 +247,7 @@ def _resolve_orchestrator_response(messages):
             content = last.get("content", "")
             assistant_content = f"[ORCHESTRATORS_V2 stub] You said: {content}"
 
-    return assistant_content, route_decision, model_decision, tool_result
+    return assistant_content, route_decision, model_decision, tool_result, semantic_candidates
 
 
 @app.post("/v1/chat/completions")
@@ -269,7 +285,7 @@ def chat_completions():
     )
     
     try:
-        assistant_content, route_decision, model_decision, tool_result = _resolve_orchestrator_response(messages)
+            assistant_content, route_decision, model_decision, tool_result, semantic_candidates = _resolve_orchestrator_response(messages)
     except Exception as exc:
         return jsonify({
             "error": {
@@ -279,6 +295,19 @@ def chat_completions():
             },
             "memory_decision": memory_decision,
         }), 502
+
+    if trace_id and semantic_candidates:
+        tracer.record_step(
+            trace_id,
+            "semantic_router",
+            {
+                "candidates": [
+                    {"tool": candidate.tool, "score": candidate.score}
+                    for candidate in semantic_candidates
+                ],
+                "decision": route_decision.__dict__ if route_decision else None,
+            },
+        )
 
     return jsonify({
         "id": "orch_v2_stub",
@@ -373,7 +402,7 @@ def agents_chat(name: str):
 
     agent_messages = inject_agent_prompt(messages, agent)
     try:
-        assistant_content, route_decision, model_decision, tool_result = _resolve_orchestrator_response(agent_messages)
+        assistant_content, route_decision, model_decision, tool_result, semantic_candidates = _resolve_orchestrator_response(agent_messages)
     except Exception as exc:
         return jsonify({
             "error": {
@@ -383,6 +412,19 @@ def agents_chat(name: str):
             },
             "memory_decision": memory_decision,
         }), 502
+
+    if trace_id and semantic_candidates:
+        tracer.record_step(
+            trace_id,
+            "semantic_router",
+            {
+                "candidates": [
+                    {"tool": candidate.tool, "score": candidate.score}
+                    for candidate in semantic_candidates
+                ],
+                "decision": route_decision.__dict__ if route_decision else None,
+            },
+        )
 
     return jsonify({
         "id": "orch_v2_agent",

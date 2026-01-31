@@ -40,7 +40,7 @@ class ToolRegistry:
         tool = self.get(name)
         if not tool:
             return {"status": "error", "error": f"unknown_tool:{name}"}
-        decision = self._policy.check(tool.name, tool.safe)
+        decision = self._policy.check(tool.name, tool.safe, params=kwargs)
         if not decision.allowed:
             return {
                 "status": "error",
