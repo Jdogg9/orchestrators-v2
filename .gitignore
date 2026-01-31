@@ -18,6 +18,7 @@ instance/orchestrator_core.db
 # Logs / artifacts / backups
 logs/
 reports/
+artifacts/
 *.log
 sync_public_version.sh
 orchestrator_backups/
