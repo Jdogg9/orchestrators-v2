@@ -14,3 +14,4 @@ opentelemetry-api>=1.25.0
 opentelemetry-sdk>=1.25.0
 opentelemetry-exporter-otlp>=1.25.0
 opentelemetry-instrumentation-flask>=0.46b0
+tiktoken>=0.6.0

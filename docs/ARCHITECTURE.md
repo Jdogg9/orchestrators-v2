@@ -4,8 +4,17 @@
 
 1. API layer (server)
 2. Orchestrator (routing + governance hooks)
-3. Tools (pluggable functions)
-4. Optional persistence (memory/recall) behind flags
+3. Tokenizer layer (ORCH_TOKENIZER)
+4. Tools (pluggable functions)
+5. Optional persistence (memory/recall) behind flags
+
+## ORCH_TOKENIZER Layer (Graceful Degradation)
+
+Token-aware orchestration relies on the local **ORCH_TOKENIZER** package to provide
+deterministic token counts for routing and pruning. When the tokenizer dependency
+is unavailable, the system falls back to **byte-level tokenization** so the safety
+logic continues to run without hard failures. This preserves guardrails like tiered
+reasoning and priority-aware pruning while clearly signaling a degraded mode.
 
 ## Memory Governance (Optional)
 

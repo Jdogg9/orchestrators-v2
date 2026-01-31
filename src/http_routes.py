@@ -300,7 +300,7 @@ def register_routes(app) -> Blueprint:
             trace_id=trace_id,
         )
 
-        agent_messages = inject_agent_prompt(messages, agent)
+        agent_messages = inject_agent_prompt(messages, agent, trace_id=trace_id)
         try:
             assistant_content, route_decision, model_decision, tool_result, semantic_candidates = _resolve_orchestrator_response(agent_messages)
         except Exception as exc:

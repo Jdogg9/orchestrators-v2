@@ -1,0 +1,96 @@
+
+================================================================================
+AIMEE CUSTOM TOKENIZER BUILD REPORT
+================================================================================
+
+Build Timestamp: 2026-01-26 15:07:42
+Tokenizer Name: gpt-aimee
+
+TRAINING DATA
+-------------
+Source: /path/to/orchestrators_v2/ORCH_TOKENIZER/data/aimee_data.txt
+Total Characters: 240,735,884
+Training Characters: 50,000,031
+Sampling Method: Random sampling
+Sample Chunks: 32
+
+TOKENIZER CONFIGURATION
+-----------------------
+Vocabulary Size: 50,257
+Pattern: GPT-4 compatible regex
+Boundary Token: <|endoftext|>
+Framework: tiktoken (Karpathy minBPE training)
+
+AIMEE SYSTEM INTEGRATION
+------------------------
+AIMEE Root: /path/to/orchestrators_v2
+Models Directory: /path/to/orchestrators_v2/ORCH_TOKENIZER/tokenizers
+Logs Directory: /path/to/orchestrators_v2/ORCH_TOKENIZER/logs/tokenizer_builder
+Core API Port: 4893
+
+OUTPUT FILES
+------------
+Model File: /path/to/orchestrators_v2/ORCH_TOKENIZER/tokenizers/gpt-aimee.model
+  Size: 500,616 bytes
+
+Metadata: /path/to/orchestrators_v2/ORCH_TOKENIZER/tokenizers/gpt-aimee_tokenizer_meta.json
+  Size: 1,082 bytes
+
+Registry: /path/to/orchestrators_v2/ORCH_TOKENIZER/tokenizers/gpt-aimee_registry.json
+  Size: 362 bytes
+
+Tool Definition: /path/to/orchestrators_v2/ORCH_TOKENIZER/tokenizers/gpt-aimee_tool_definition.json
+
+Loader Module: /path/to/orchestrators_v2/ORCH_TOKENIZER/tokenizers/gpt-aimee_loader.py
+  Size: 4,976 bytes
+
+Bundle: /path/to/orchestrators_v2/ORCH_TOKENIZER/tokenizers/gpt-aimee_tokenizer_bundle.zip
+  Size: 208,597 bytes
+
+Log File: /path/to/orchestrators_v2/ORCH_TOKENIZER/logs/tokenizer_builder/build_20260120_123554.log
+
+VALIDATION RESULTS
+------------------
+✅ Manual round-trip tests: PASSED
+✅ Random corpus snippet tests: PASSED
+✅ Metadata generation: COMPLETE
+✅ Registry entry: COMPLETE
+✅ Tool definition: COMPLETE
+✅ Loader module: COMPLETE
+
+USAGE INSTRUCTIONS
+------------------
+
+1. Load in Python:
+   ```python
+   from gpt-aimee_loader import load_aimee_tokenizer
+   tokenizer = load_aimee_tokenizer()
+   tokens = tokenizer.encode("Your text here")
+   text = tokenizer.decode(tokens)
+   ```
+
+2. Use with tiktoken directly:
+   ```python
+   import tiktoken
+   enc = tiktoken.get_encoding("gpt-aimee")
+   tokens = enc.encode("Your text here")
+   ```
+
+3. Register with AIMEE tools system:
+  - Tool definition available at: /path/to/orchestrators_v2/ORCH_TOKENIZER/tokenizers/gpt-aimee_tool_definition.json
+   - Add to tools.json in AIMEE config directory
+
+4. Access via AIMEE Core API (if integrated):
+   - GET http://127.0.0.1:4893/aimee/models/inventory
+   - POST http://127.0.0.1:4893/aimee/tokenize
+
+NEXT STEPS
+----------
+1. ✅ Tokenizer built and saved to AIMEE models directory
+2. ⏭️ Test the loader module: python /path/to/orchestrators_v2/ORCH_TOKENIZER/tokenizers/gpt-aimee_loader.py
+3. ⏭️ Register tool in AIMEE config/tools.json
+4. ⏭️ Add tokenizer endpoint to aimee_orchestrator.py
+5. ⏭️ Run model inventory scan to detect new tokenizer
+6. ⏭️ Test via AIMEE Core API
+
+================================================================================
