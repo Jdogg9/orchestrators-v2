@@ -34,6 +34,36 @@ def _fetch_trace_summary(db_path: Path) -> Tuple[int, int, List[Tuple[str, str]]
         conn.close()
 
 
+def _fetch_trace_rehearsal_metadata(db_path: Path) -> Dict[str, Any]:
+    if not db_path.exists():
+        return {
+            "rehearsal_detected": False,
+            "rehearsal_traces": 0,
+            "max_total_tokens": 0,
+        }
+
+    rehearsal_traces = 0
+    max_total_tokens = 0
+    with sqlite3.connect(str(db_path)) as conn:
+        cursor = conn.cursor()
+        cursor.execute("SELECT metadata_json FROM traces")
+        for (metadata_json,) in cursor.fetchall():
+            if not metadata_json:
+                continue
+            try:
+                metadata = json.loads(metadata_json)
+            except json.JSONDecodeError:
+                continue
+            if metadata.get("mode") == "audit_rehearsal":
+                rehearsal_traces += 1
+                max_total_tokens = max(max_total_tokens, int(metadata.get("total_tokens", 0)))
+
+    return {
+        "rehearsal_detected": rehearsal_traces > 0,
+        "rehearsal_traces": rehearsal_traces,
+        "max_total_tokens": max_total_tokens,
+    }
+
 def _load_vulnerability_log(log_path: Path) -> Optional[Dict[str, Any]]:
     if not log_path.exists():
         return None
@@ -56,6 +86,7 @@ def generate_report(output_path: Path, trace_db_path: Path) -> None:
     output_path.parent.mkdir(parents=True, exist_ok=True)
 
     trace_count, step_count, recent_traces = _fetch_trace_summary(trace_db_path)
+    rehearsal_meta = _fetch_trace_rehearsal_metadata(trace_db_path)
     vulnerability_log_path = Path(
         os.getenv("VULNERABILITY_LOG_PATH", trace_db_path.parent / "vulnerability_log.json")
     )
@@ -63,6 +94,7 @@ def generate_report(output_path: Path, trace_db_path: Path) -> None:
 
     now = datetime.now(timezone.utc).isoformat()
     c = canvas.Canvas(str(output_path), pagesize=letter)
+    c.setPageCompression(0)
     width, height = letter
 
     y = height - inch
@@ -76,6 +108,11 @@ def generate_report(output_path: Path, trace_db_path: Path) -> None:
     y -= 0.3 * inch
     c.drawString(inch, y, f"Trace DB: {trace_db_path}")
 
+    if rehearsal_meta.get("rehearsal_detected"):
+        y -= 0.2 * inch
+        c.setFont("Helvetica-Bold", 11)
+        c.drawString(inch, y, "AUDIT_REHEARSAL_MOCK")
+
     y -= 0.4 * inch
     c.setFont("Helvetica-Bold", 12)
     c.drawString(inch, y, "Trace Receipts Summary")
@@ -87,6 +124,18 @@ def generate_report(output_path: Path, trace_db_path: Path) -> None:
     y -= 0.25 * inch
     c.drawString(inch, y, f"Total trace steps: {step_count}")
 
+    if rehearsal_meta.get("rehearsal_detected"):
+        y -= 0.25 * inch
+        c.setFont("Helvetica-Bold", 11)
+        c.drawString(inch, y, "Audit Rehearsal (MOCK) — Tier 3 synthetic trace")
+        y -= 0.2 * inch
+        c.setFont("Helvetica", 10)
+        c.drawString(
+            inch,
+            y,
+            f"Synthetic traces: {rehearsal_meta.get('rehearsal_traces')} | "
+            f"Synthetic token load: {rehearsal_meta.get('max_total_tokens')}",
+        )
     y -= 0.4 * inch
     c.setFont("Helvetica-Bold", 12)
     c.drawString(inch, y, "Most Recent Traces")
@@ -173,6 +222,7 @@ def generate_report(output_path: Path, trace_db_path: Path) -> None:
 def generate_jsonld(output_path: Path, trace_db_path: Path) -> None:
     output_path.parent.mkdir(parents=True, exist_ok=True)
     trace_count, step_count, recent_traces = _fetch_trace_summary(trace_db_path)
+    rehearsal_meta = _fetch_trace_rehearsal_metadata(trace_db_path)
     now = datetime.now(timezone.utc).isoformat()
     vulnerability_log_path = Path(
         os.getenv("VULNERABILITY_LOG_PATH", trace_db_path.parent / "vulnerability_log.json")
@@ -244,6 +294,13 @@ def generate_jsonld(output_path: Path, trace_db_path: Path) -> None:
                 }
             ],
             "dependency_health": dependency_health,
+            "audit_rehearsal": {
+                "synthetic": rehearsal_meta.get("rehearsal_detected"),
+                "tier": "tier3" if rehearsal_meta.get("rehearsal_detected") else None,
+                "synthetic_traces": rehearsal_meta.get("rehearsal_traces"),
+                "synthetic_token_load": rehearsal_meta.get("max_total_tokens"),
+                "note": "Synthetic rehearsal trace (no LLM tokens consumed)",
+            },
             "trace_steps_total": step_count,
             "recent_traces": [
                 {"trace_id": trace_id, "created_at": created_at}
