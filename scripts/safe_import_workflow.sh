@@ -5,7 +5,7 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 V2="$(cd "$SCRIPT_DIR/.." && pwd)"
-cd "$V2"
+cd "$V2" || exit
 
 echo "==[1/6] Confirm we're in ORCHESTRATORS_V2 =="
 pwd
