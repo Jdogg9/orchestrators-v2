@@ -1,4 +1,4 @@
-"""Experimental converter for a trivial JSON-like graph format.
+"""Experimental converter for a small LangGraph/CrewAI-style graph subset.
 
 This is NOT a full LangGraph adapter. It exists to provide a tiny bridge
 for migration demos and documentation.
@@ -34,6 +34,43 @@ def convert_graph(graph: Dict[str, object]) -> List[RuleSpec]:
         if not target or not condition:
             continue
         rules.append(RuleSpec(tool=str(target), match=str(condition)))
+    return rules
+
+
+def convert_langgraph_spec(spec: Dict[str, object]) -> List[RuleSpec]:
+    """Convert a limited LangGraph-like spec to rule specs.
+
+    Supported keys:
+    - nodes: [{"id": "tool_name", "type": "tool"}]
+    - edges: [{"from": "router", "to": "tool_name", "when": "contains:keyword"}]
+    - conditional_edges: [{"from": "router", "conditions": [{"when": "contains:foo", "to": "tool"}]}]
+    """
+    rules: List[RuleSpec] = []
+    if not isinstance(spec, dict):
+        return rules
+
+    edges = spec.get("edges", []) or []
+    for edge in edges:
+        if not isinstance(edge, dict):
+            continue
+        target = edge.get("to")
+        condition = edge.get("when") or edge.get("condition")
+        if target and condition:
+            rules.append(RuleSpec(tool=str(target), match=str(condition)))
+
+    conditional = spec.get("conditional_edges", []) or []
+    for entry in conditional:
+        if not isinstance(entry, dict):
+            continue
+        conditions = entry.get("conditions", []) or []
+        for condition_entry in conditions:
+            if not isinstance(condition_entry, dict):
+                continue
+            target = condition_entry.get("to")
+            condition = condition_entry.get("when") or condition_entry.get("condition")
+            if target and condition:
+                rules.append(RuleSpec(tool=str(target), match=str(condition)))
+
     return rules
 
 

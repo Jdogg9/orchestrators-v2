@@ -25,8 +25,13 @@ def register_routes(app) -> Blueprint:
     def _api_enabled() -> bool:
         return os.getenv("ORCH_ENABLE_API", "1") == "1"
 
+    def _auth_required() -> bool:
+        if os.getenv("ORCH_ENV", "development").lower() == "production":
+            return True
+        return os.getenv("ORCH_REQUIRE_BEARER", "1") == "1"
+
     def require_bearer() -> Tuple[bool, Dict[str, Any] | None]:
-        if os.getenv("ORCH_REQUIRE_BEARER", "0") != "1":
+        if not _auth_required():
             return True, None
         token = os.getenv("ORCH_BEARER_TOKEN", "")
         got = request.headers.get("Authorization", "")
@@ -87,15 +92,17 @@ def register_routes(app) -> Blueprint:
     def metrics():
         if os.getenv("ORCH_METRICS_ENABLED", "1") != "1":
             return {"status": "disabled", "service": "orchestrators_v2"}, 503
-        if os.getenv("ORCH_REQUIRE_BEARER", "0") == "1":
-            ok, err = require_bearer()
-            if not ok:
-                return jsonify(err), 401
+        ok, err = require_bearer()
+        if not ok:
+            return jsonify(err), 401
         registry = current_app.config["ORCH_METRICS_REGISTRY"]
         return Response(generate_latest(registry), mimetype=CONTENT_TYPE_LATEST)
 
     @app.post("/echo")
     def echo():
+        ok, err = require_bearer()
+        if not ok:
+            return jsonify(err), 401
         data = request.get_json(force=True, silent=True) or {}
         message = data.get("message", "")
         return jsonify({"echo": message}), 200

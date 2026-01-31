@@ -43,6 +43,7 @@ if not logger.handlers:
 RATE_LIMIT_ENABLED = os.getenv("ORCH_RATE_LIMIT_ENABLED", "1") == "1"
 RATE_LIMIT = os.getenv("ORCH_RATE_LIMIT", "60 per minute")
 RATE_LIMIT_STORAGE_URL = os.getenv("ORCH_RATE_LIMIT_STORAGE_URL")
+ORCH_ENV = os.getenv("ORCH_ENV", "development").lower()
 
 
 def _rate_limit_key() -> str:
@@ -58,6 +59,9 @@ def create_app() -> Flask:
 
     max_request_bytes = int(os.getenv("ORCH_MAX_REQUEST_BYTES", "1048576"))
     app.config["MAX_CONTENT_LENGTH"] = max_request_bytes
+
+    if ORCH_ENV == "production" and RATE_LIMIT_ENABLED and not RATE_LIMIT_STORAGE_URL:
+        raise RuntimeError("ORCH_RATE_LIMIT_STORAGE_URL is required in production when rate limiting is enabled")
 
     limiter = (
         Limiter(

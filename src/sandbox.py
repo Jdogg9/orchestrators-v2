@@ -19,7 +19,7 @@ class SandboxRunner:
     """Docker-based sandbox runner for unsafe tool execution."""
 
     def __init__(self) -> None:
-        self.enabled = os.getenv("ORCH_TOOL_SANDBOX_ENABLED", "0") == "1"
+        self.enabled = os.getenv("ORCH_TOOL_SANDBOX_ENABLED", "1") == "1"
         self.image = os.getenv("ORCH_SANDBOX_IMAGE", "python:3.12-slim")
         self.timeout_sec = int(os.getenv("ORCH_SANDBOX_TIMEOUT_SEC", "10"))
         self.memory_mb = int(os.getenv("ORCH_SANDBOX_MEMORY_MB", "256"))

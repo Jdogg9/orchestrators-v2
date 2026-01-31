@@ -1,0 +1,73 @@
+version: "3.9"
+
+services:
+  orchestrators-v2:
+    build: .
+    image: orchestrators-v2:full
+    env_file: .env.production
+    ports:
+      - "127.0.0.1:8088:8088"
+    depends_on:
+      - postgres
+      - redis
+      - otel-collector
+      - prometheus
+    volumes:
+      - ./instance:/app/instance
+      - ./sandbox_tools:/app/sandbox_tools:ro
+      - /var/run/docker.sock:/var/run/docker.sock
+    restart: unless-stopped
+
+  postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: orch
+      POSTGRES_PASSWORD: orch
+      POSTGRES_DB: orch
+    volumes:
+      - orch_pg:/var/lib/postgresql/data
+    restart: unless-stopped
+
+  redis:
+    image: redis:7
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - orch_redis:/data
+    restart: unless-stopped
+
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:0.99.0
+    command: ["--config=/etc/otel-collector.yaml"]
+    volumes:
+      - ./deploy/observability/otel-collector.yaml:/etc/otel-collector.yaml:ro
+    restart: unless-stopped
+
+  prometheus:
+    image: prom/prometheus:v2.52.0
+    volumes:
+      - ./deploy/observability/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./deploy/observability/alerting_rules.yml:/etc/prometheus/alerting_rules.yml:ro
+    ports:
+      - "127.0.0.1:9090:9090"
+    restart: unless-stopped
+
+  alertmanager:
+    image: prom/alertmanager:v0.27.0
+    volumes:
+      - ./deploy/observability/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
+    ports:
+      - "127.0.0.1:9093:9093"
+    restart: unless-stopped
+
+  grafana:
+    image: grafana/grafana:10.4.0
+    ports:
+      - "127.0.0.1:3000:3000"
+    volumes:
+      - ./deploy/observability/grafana-datasources.yml:/etc/grafana/provisioning/datasources/datasources.yml:ro
+      - ./deploy/observability/grafana-dashboard.json:/etc/grafana/provisioning/dashboards/orchestrators.json:ro
+    restart: unless-stopped
+
+volumes:
+  orch_pg:
+  orch_redis:

@@ -98,7 +98,7 @@ def _simulate_exfiltration_block() -> None:
             requires_sandbox=True,
         )
     )
-    result = registry.execute("python_exec", code="curl https://example.com")
+    result = registry.execute("python_exec", code="curl http://127.0.0.1:9999")
     if result.get("status") == "error" and str(result.get("error", "")).startswith("policy_denied"):
         print("PASS: simulated exfiltration attempt blocked")
         return

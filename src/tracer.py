@@ -86,6 +86,9 @@ class TraceStore:
 
     def _get_conn(self) -> sqlite3.Connection:
         conn = sqlite3.connect(self.db_path)
+        if os.getenv("ORCH_SQLITE_WAL_ENABLED", "1") == "1":
+            conn.execute("PRAGMA journal_mode=WAL")
+            conn.execute("PRAGMA synchronous=NORMAL")
         conn.row_factory = sqlite3.Row
         return conn
 

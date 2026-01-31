@@ -64,13 +64,14 @@ These layers shift the system from “works” to “safe to leave unattended.�
 <!-- REPO_FACTS_START -->
 - **Server routes**: `/health`, `/ready`, `/metrics`, `/echo`, `/v1/chat/completions`, `/v1/tools/execute`, `/v1/agents`, `/v1/agents/<name>`, `/v1/agents/<name>/chat`
 - **Default bind**: `ORCH_PORT=8088`, `ORCH_HOST=127.0.0.1`
+- **Environment flag**: `ORCH_ENV`
 - **API flag**: `ORCH_ENABLE_API`
 - **Auth flags**: `ORCH_REQUIRE_BEARER`, `ORCH_BEARER_TOKEN`
 - **LLM flags**: `ORCH_LLM_ENABLED`, `ORCH_LLM_PROVIDER`, `ORCH_OLLAMA_URL`, `ORCH_MODEL_CHAT`, `ORCH_LLM_TIMEOUT_SEC`, `ORCH_LLM_HEALTH_TIMEOUT_SEC`
 - **Safety flags**: `ORCH_MAX_REQUEST_BYTES`, `ORCH_RATE_LIMIT_ENABLED`, `ORCH_RATE_LIMIT`, `ORCH_RATE_LIMIT_STORAGE_URL`, `ORCH_LOG_JSON`, `ORCH_LOG_LEVEL`, `ORCH_METRICS_ENABLED`
 - **Routing flags**: `ORCH_ORCHESTRATOR_MODE`, `ORCH_ROUTER_POLICY_PATH`
 - **Semantic routing flags**: `ORCH_SEMANTIC_ROUTER_ENABLED`, `ORCH_SEMANTIC_ROUTER_MIN_SIMILARITY`, `ORCH_SEMANTIC_ROUTER_EMBED_MODEL`, `ORCH_SEMANTIC_ROUTER_OLLAMA_URL`, `ORCH_SEMANTIC_ROUTER_TIMEOUT_SEC`
-- **DB flags**: `ORCH_DATABASE_URL`, `ORCH_DB_POOL_RECYCLE`
+- **DB flags**: `ORCH_DATABASE_URL`, `ORCH_DB_POOL_RECYCLE`, `ORCH_SQLITE_WAL_ENABLED`
 - **Sandbox flags**: `ORCH_TOOL_SANDBOX_ENABLED`, `ORCH_TOOL_SANDBOX_REQUIRED`, `ORCH_TOOL_SANDBOX_FALLBACK`, `ORCH_SANDBOX_IMAGE`, `ORCH_SANDBOX_TIMEOUT_SEC`, `ORCH_SANDBOX_MEMORY_MB`, `ORCH_SANDBOX_CPU`, `ORCH_SANDBOX_TOOL_DIR`
 - **Tool policy flags**: `ORCH_TOOL_POLICY_ENFORCE`, `ORCH_TOOL_POLICY_PATH`
 - **Tool feature flags**: `ORCH_TOOL_WEB_SEARCH_ENABLED`
@@ -165,6 +166,19 @@ Run the philosophy end-to-end in minutes:
 
 - [Killer demo quickstart](examples/killer_demo_local_receipts/README.md)
 
+## Hardened Full Stack (one command)
+
+Spin up sandboxing + Postgres + Redis + metrics in one shot:
+
+```bash
+cp .env.production.example .env.production
+# Rotate ORCH_BEARER_TOKEN before production use.
+
+docker compose -f docker-compose.full.yml up --build
+```
+
+See [docs/OBSERVABILITY_STACK.md](docs/OBSERVABILITY_STACK.md) for dashboards and alerts.
+
 ## Try the Orchestrator (5 minutes)
 
 A minimal, runnable example demonstrating the full pattern:
@@ -238,6 +252,8 @@ Server runs on `http://127.0.0.1:8088` and stays local-only by default.
 - Systemd unit template: `deploy/systemd/orchestrators-v2.service`
 - Secret scan (CI): `scripts/secret_scan.sh`
 - Security automation: `scripts/security_scan.sh`
+- Postgres schema init: `scripts/init_postgres_schema.py`
+- SQLite → Postgres migration: `scripts/migrate_sqlite_to_postgres.py`
 
 ## Security Model (Defaults)
 
@@ -246,8 +262,11 @@ Server runs on `http://127.0.0.1:8088` and stays local-only by default.
 * **Feature flags**: Memory/recall/tools OFF by default
 * **Runtime state**: Never committed (see [.gitignore](.gitignore))
 * **Rate limits**: keyed by bearer token hash when provided (falls back to IP)
+* **Auth**: bearer token required for all non-health endpoints in production
 
 **Rate limit storage**: If `ORCH_RATE_LIMIT_STORAGE_URL` is not set, limits are per-process. For multi-worker or production use, Redis is strongly recommended.
+
+**Token rotation**: update `ORCH_BEARER_TOKEN`, restart the service, and expire old tokens. Rotate on a fixed cadence (e.g., monthly) or after any incident.
 
 ## Documentation
 
@@ -262,7 +281,10 @@ Server runs on `http://127.0.0.1:8088` and stays local-only by default.
 - [Production Deployment](docs/PRODUCTION_DEPLOYMENT.md) - High-stakes stack
 - [Security Governance](docs/SECURITY_GOVERNANCE.md) - Signed commits, branch protections, dynamic scans
 - [Public Release Guide](docs/PUBLIC_RELEASE_GUIDE.md) - Maintenance workflow
+- [Observability Stack](docs/OBSERVABILITY_STACK.md) - OTel + Prometheus + Grafana
 - [Trust Pack](trust_pack/README.md) - Operator checklist, audit template, deployment recipes
+- [Community](docs/COMMUNITY.md) - Contribution channels + governance
+- [Optional Modules](docs/OPTIONAL_MODULES.md) - Planning, scheduling, cost-aware routing
 
 ## Contributing
 

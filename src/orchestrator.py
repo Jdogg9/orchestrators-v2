@@ -134,7 +134,8 @@ class Orchestrator:
                     description="Search the public web (DuckDuckGo) for non-sensitive queries",
                     handler=web_search,
                     safe=False,
-                    requires_sandbox=False,
+                    requires_sandbox=True,
+                    sandbox_command=["python", "/tools/web_search.py"],
                 )
             )
 

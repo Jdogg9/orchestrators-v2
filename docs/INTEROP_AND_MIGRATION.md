@@ -46,10 +46,57 @@ router.add_rule(
 )
 ```
 
-## Experimental Converter
+## Experimental Converters
 
-A tiny converter is provided for a trivial JSON-like graph format:
+A tiny converter is provided for a trivial JSON-like graph format and a minimal
+LangGraph/CrewAI subset:
 
-- [orchestrators_v2/interop/langgraph.py](../orchestrators_v2/interop/langgraph.py)
+- LangGraph subset: [orchestrators_v2/interop/langgraph.py](../orchestrators_v2/interop/langgraph.py)
+- CrewAI subset: [orchestrators_v2/interop/crewai.py](../orchestrators_v2/interop/crewai.py)
 
-It is intentionally minimal and **not** a full LangGraph converter.
+It is intentionally minimal and **not** a full LangGraph/CrewAI converter.
+
+## Migration Kit (Straightforward Path)
+
+1. Export a minimal graph/task spec (subset) into JSON.
+2. Convert to rules with the experimental converters.
+3. Replace your router policy with the generated rules.
+4. Run the local receipt + boundary demo to validate parity.
+
+Example:
+
+```python
+from orchestrators_v2.interop.langgraph import convert_langgraph_spec, to_rule_router_snippet
+
+rules = convert_langgraph_spec({
+  "edges": [{"from": "router", "to": "safe_calc", "when": "contains:calc"}]
+})
+print(to_rule_router_snippet(rules))
+```
+
+### Supported Subset (LangGraph)
+
+```json
+{
+  "edges": [
+    {"from": "router", "to": "echo", "when": "contains:echo"},
+    {"from": "router", "to": "safe_calc", "condition": "contains:calc"}
+  ],
+  "conditional_edges": [
+    {"from": "router", "conditions": [
+      {"when": "contains:news", "to": "web_search"}
+    ]}
+  ]
+}
+```
+
+### Supported Subset (CrewAI)
+
+```json
+{
+  "tasks": [
+    {"tool": "web_search", "when": "contains:news"},
+    {"tool": "safe_calc", "when": "contains:calc"}
+  ]
+}
+```

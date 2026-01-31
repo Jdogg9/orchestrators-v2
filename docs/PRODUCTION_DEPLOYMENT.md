@@ -25,6 +25,7 @@ This guide deploys ORCHESTRATORS_V2 with **sandboxing**, **Postgres**, **Redis-b
 ## Environment (example)
 
 ```dotenv
+ORCH_ENV=production
 ORCH_ORCHESTRATOR_MODE=advanced
 ORCH_LLM_ENABLED=1
 ORCH_REQUIRE_BEARER=1
@@ -46,6 +47,13 @@ ORCH_OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4318/v1/traces
 docker compose -f deploy/docker-compose.prod.yml up -d
 ```
 
+For a turnkey local stack (API + Postgres + Redis + metrics):
+
+```bash
+cp .env.production.example .env.production
+docker compose -f docker-compose.full.yml up --build
+```
+
 ## Verify
 
 ```bash
@@ -58,3 +66,5 @@ curl -H "Authorization: Bearer $ORCH_BEARER_TOKEN" http://127.0.0.1:8088/metrics
 - Sandbox tools are executed in Docker with **network disabled** and **read-only** filesystem.
 - Postgres is optional, but required for multi-node or audited deployments.
 - Grafana ships a starter dashboard; customize for your SLOs.
+- **Token rotation**: rotate `ORCH_BEARER_TOKEN` on a fixed cadence and after incidents.
+- **Rate limiting**: production requires `ORCH_RATE_LIMIT_STORAGE_URL` (Redis).

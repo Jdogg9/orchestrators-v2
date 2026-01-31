@@ -303,6 +303,9 @@ def capture_candidate_memory(
     Path(memory_db).parent.mkdir(parents=True, exist_ok=True)
 
     conn = sqlite3.connect(memory_db)
+    if _env_flag("ORCH_SQLITE_WAL_ENABLED", "1"):
+        conn.execute("PRAGMA journal_mode=WAL")
+        conn.execute("PRAGMA synchronous=NORMAL")
     try:
         _ensure_memory_candidates_schema(conn)
         cursor = conn.cursor()
