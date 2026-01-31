@@ -43,6 +43,15 @@ def _load_vulnerability_log(log_path: Path) -> Optional[Dict[str, Any]]:
         return None
 
 
+def _architectural_status(entry: Dict[str, Any]) -> str:
+    mitigation = entry.get("mitigation") or ""
+    if "Mitigated" in mitigation:
+        return "Architecturally Mitigated"
+    if "Accepted" in mitigation:
+        return "Architecturally Accepted (Non-Reachable)"
+    return "Unclassified"
+
+
 def generate_report(output_path: Path, trace_db_path: Path) -> None:
     output_path.parent.mkdir(parents=True, exist_ok=True)
 
@@ -145,7 +154,12 @@ def generate_report(output_path: Path, trace_db_path: Path) -> None:
             dependency = entry.get("dependency", "unknown")
             advisory_id = entry.get("advisory_id", "pending")
             reachability = entry.get("reachability", "unknown")
-            c.drawString(inch, y, f"{dependency} — {advisory_id} — reachability: {reachability}")
+            status_text = _architectural_status(entry)
+            c.drawString(
+                inch,
+                y,
+                f"{dependency} — {advisory_id} — reachability: {reachability} — status: {status_text}",
+            )
             y -= 0.2 * inch
             reachability_note = entry.get("mitigation") or entry.get("reason")
             if reachability_note:
@@ -187,6 +201,7 @@ def generate_jsonld(output_path: Path, trace_db_path: Path) -> None:
                     "ghsa_id": entry.get("ghsa_id"),
                     "reachability": entry.get("reachability"),
                     "reachability_notes": entry.get("mitigation") or entry.get("reason"),
+                    "architectural_status": _architectural_status(entry),
                     "review_by": entry.get("review_by"),
                 }
                 for entry in assessments
