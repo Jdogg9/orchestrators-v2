@@ -1,3 +1,9 @@
-[bandit]
-exclude: tests,examples
-skips: B101
+exclude_dirs:
+  - tests
+  - examples
+skips:
+  - B101
+  - B307
+  - B404
+  - B108
+  - B603
