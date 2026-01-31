@@ -38,6 +38,14 @@ def _eval_node(node):
     raise ValueError("Unsupported expression")
 ```
 
+## Script (Ready to Run)
+We ship a standalone script at [scripts/safe_calc.py](scripts/safe_calc.py):
+
+```bash
+./scripts/safe_calc.py "2 + 2 * (3 - 1)"
+# {"status":"ok","result":6.0}
+```
+
 ## Integration Idea (Toy Orchestrator)
 Replace the `eval()` call in `examples/toy_orchestrator.py` with `safe_eval()` and keep the warning banner to reinforce the lesson.
 

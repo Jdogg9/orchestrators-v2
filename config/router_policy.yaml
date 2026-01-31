@@ -1,11 +1,40 @@
+version: 1
+description: "Deterministic router policy for ORCHESTRATORS_V2"
+defaults:
+  confidence: 0.7
+  case_insensitive: true
+  params: {}
+
+# Schema
+# rules:
+#   - id: "string"                # optional, for auditability
+#     description: "string"       # optional, human-friendly intent
+#     enabled: true|false          # optional, default true
+#     match: "regex"              # one regex pattern
+#     match_any: ["regex", ...]   # OR of patterns (use match OR match_any)
+#     case_insensitive: true|false # optional, default true
+#     tool: "tool_name"           # tool registry name
+#     params:                      # optional, per-rule params
+#       expression_key: "expression"
+#     confidence: 0.0-1.0
+#     reason: "string"            # optional, default policy_match
+
 rules:
-  - match: "\bcalc(ulate)?\b|\bmath\b"
+  - id: "math.safe_calc"
+    description: "Route arithmetic to the AST-based safe calculator"
+    match_any:
+      - "\\bcalc(ulate)?\\b"
+      - "\\bmath\\b"
+      - "[0-9][0-9\\s\\+\\-\\*\\/\\(\\)\\.]+"
     tool: "safe_calc"
     params:
       expression_key: "expression"
-    confidence: 0.9
+    confidence: 0.92
     reason: "math_expression"
-  - match: "\becho\b"
+
+  - id: "utility.echo"
+    description: "Echo requests for testing"
+    match: "\\becho\\b"
     tool: "echo"
     params:
       message_key: "message"

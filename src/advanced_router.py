@@ -19,8 +19,9 @@ class ModelDecision:
 class PolicyRouter:
     """Policy-driven router loaded from YAML (deterministic + auditable)."""
 
-    def __init__(self, rules: List[Dict[str, str]]) -> None:
+    def __init__(self, rules: List[Dict[str, str]], defaults: Optional[Dict[str, object]] = None) -> None:
         self._rules = rules
+        self._defaults = defaults or {}
 
     @classmethod
     def from_env(cls) -> "PolicyRouter":
@@ -28,19 +29,32 @@ class PolicyRouter:
         with open(policy_path, "r", encoding="utf-8") as handle:
             payload = yaml.safe_load(handle) or {}
         rules = payload.get("rules", [])
-        return cls(rules=rules)
+        defaults = payload.get("defaults", {})
+        return cls(rules=rules, defaults=defaults)
 
     def route(self, user_input: str) -> RouteDecision:
         for rule in self._rules:
-            pattern = rule.get("match")
-            if not pattern:
+            if rule.get("enabled", True) is False:
                 continue
-            if re.search(pattern, user_input, flags=re.IGNORECASE):
+
+            patterns = []
+            if rule.get("match"):
+                patterns.append(rule.get("match"))
+            if rule.get("match_any"):
+                patterns.extend(rule.get("match_any") or [])
+            if not patterns:
+                continue
+
+            case_insensitive = rule.get("case_insensitive", self._defaults.get("case_insensitive", True))
+            flags = re.IGNORECASE if case_insensitive else 0
+            if any(re.search(pattern, user_input, flags=flags) for pattern in patterns):
+                params = dict(self._defaults.get("params", {}) or {})
+                params.update(rule.get("params", {}) or {})
                 return RouteDecision(
                     tool=rule.get("tool"),
-                    params=rule.get("params", {}) or {},
-                    confidence=float(rule.get("confidence", 0.7)),
-                    reason=rule.get("reason", "policy_match"),
+                    params=params,
+                    confidence=float(rule.get("confidence", self._defaults.get("confidence", 0.7))),
+                    reason=rule.get("reason", rule.get("id", "policy_match")),
                 )
         return RouteDecision(tool=None, params={}, confidence=0.0, reason="no_match")
 
