@@ -30,7 +30,18 @@ SECRET_PATTERNS = [
     r"Bearer\s+[A-Za-z0-9_\-.]+",
     r"sk-[A-Za-z0-9_\-]{20,}",
     r"ghp_[A-Za-z0-9_\-]{20,}",
+    r"gho_[A-Za-z0-9_\-]{20,}",
+    r"xoxb-[A-Za-z0-9_\-]{20,}",
+    r"xoxp-[A-Za-z0-9_\-]{20,}",
+    r"AKIA[0-9A-Z]{16}",
+    r"AIza[0-9A-Za-z_\-]{35}",
+    r"eyJ[A-Za-z0-9_\-]{10,}\.[A-Za-z0-9_\-]{10,}\.[A-Za-z0-9_\-]{10,}",
     r"-----BEGIN[\sA-Z]+PRIVATE KEY-----",
+]
+
+PII_PATTERNS = [
+    r"\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b",
+    r"\b(?:\+?1[-.\s]?)?\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}\b",
 ]
 
 CONTROL_CHARS_PATTERN = r"[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]+"
@@ -72,6 +83,9 @@ def _redact_sensitive(text: str) -> str:
     scrubbed = text
     for pattern in SECRET_PATTERNS:
         scrubbed = re.sub(pattern, "[REDACTED]", scrubbed, flags=re.IGNORECASE)
+    if _env_flag("ORCH_MEMORY_SCRUB_REDACT_PII", "1"):
+        for pattern in PII_PATTERNS:
+            scrubbed = re.sub(pattern, "[REDACTED]", scrubbed, flags=re.IGNORECASE)
     return scrubbed
 
 

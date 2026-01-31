@@ -93,6 +93,16 @@ def create_app() -> Flask:
         ["route", "method", "status"],
         registry=metrics_registry,
     )
+    shadow_total = Counter(
+        "orch_router_shadow_total",
+        "Total shadow-mode routing comparisons",
+        registry=metrics_registry,
+    )
+    shadow_mismatch = Counter(
+        "orch_router_shadow_mismatch",
+        "Total shadow-mode routing mismatches",
+        registry=metrics_registry,
+    )
 
     app.config["ORCH_LIMITER"] = limiter
     app.config["ORCH_RATE_LIMIT"] = RATE_LIMIT
@@ -100,7 +110,10 @@ def create_app() -> Flask:
     app.config["ORCH_REQUEST_COUNT"] = request_count
     app.config["ORCH_REQUEST_LATENCY"] = request_latency
     app.config["ORCH_ERROR_COUNT"] = error_count
-    app.config["ORCH_ORCHESTRATOR"] = Orchestrator()
+    app.config["ORCH_ORCHESTRATOR"] = Orchestrator(
+        shadow_total_counter=shadow_total,
+        shadow_mismatch_counter=shadow_mismatch,
+    )
 
     @app.before_request
     def start_request():

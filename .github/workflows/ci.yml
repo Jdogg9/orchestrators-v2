@@ -23,6 +23,40 @@ jobs:
           pip install -r requirements.txt
           pip install bandit pip-audit
 
+      - name: Packaging smoke
+        run: |
+          set -euo pipefail
+          python -V
+          python -m venv /tmp/orch-packaging-venv
+          source /tmp/orch-packaging-venv/bin/activate
+          python -m pip install --upgrade pip
+
+          python -m compileall src
+
+          set +e
+          if [ -f pyproject.toml ] || [ -f setup.py ]; then
+            python -m pip install .
+            NO_NETWORK=1 python -c "import orchestrators_v2; print('import ok')"
+            STATUS=$?
+          else
+            python -m pip install -r requirements.txt
+            PYTHONPATH=src NO_NETWORK=1 python -c "import server, orchestrator, intent_router; print('import ok')"
+            STATUS=$?
+          fi
+          set -e
+
+          if [ "$STATUS" -ne 0 ]; then
+            echo "Packaging smoke failed."
+            echo "Python version: $(python -V 2>&1)"
+            python -m pip list
+            echo "Reproduce (no packaging metadata):"
+            echo "  python -m venv /tmp/orch-packaging-venv"
+            echo "  source /tmp/orch-packaging-venv/bin/activate"
+            echo "  python -m pip install -r requirements.txt"
+            echo "  PYTHONPATH=src NO_NETWORK=1 python -c \"import server, orchestrator, intent_router\""
+            exit "$STATUS"
+          fi
+
       - name: Verify public boundary
         run: ./scripts/verify_public_boundary.sh
 
@@ -43,8 +77,23 @@ jobs:
       - name: Repo Facts fast gate
         run: pytest -q -k "repo_facts"
 
-      - name: Run pytest
-        run: pytest -q
+      - name: No-network smoke
+        run: NO_NETWORK=1 pytest -q tests/test_repo_facts.py tests/test_cache_invariants.py tests/test_routing_golden_set.py
+
+      - name: Run test suite (pass 1)
+        run: ./scripts/run_tests.sh
+
+      - name: Run test suite (pass 2)
+        run: ./scripts/run_tests.sh
+
+      - name: CI routing report
+        run: ./scripts/routing_report.sh
+
+      - name: Upload routing report
+        uses: actions/upload-artifact@v4
+        with:
+          name: ci-routing-report
+          path: artifacts/ci_routing_report.md
 
       - name: ShellCheck scripts
         uses: ludeeus/action-shellcheck@master

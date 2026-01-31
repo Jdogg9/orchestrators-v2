@@ -10,7 +10,7 @@ from src import memory
 
 @pytest.mark.skipif(
     not os.getenv("ORCH_DATABASE_URL", "").startswith("postgresql"),
-    reason="Postgres URL not configured",
+    reason="Postgres integration test skipped (ORCH_DATABASE_URL not configured)",
 )
 def test_postgres_trace_and_memory_tables(tmp_path):
     engine = get_engine()

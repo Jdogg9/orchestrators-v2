@@ -7,6 +7,7 @@ import re
 
 from src.policy_engine import PolicyEngine
 from src.sandbox import SandboxRunner
+from src.tracer import get_tracer
 
 
 @dataclass(frozen=True)
@@ -41,11 +42,26 @@ class ToolRegistry:
     def get(self, name: str) -> Optional[ToolSpec]:
         return self._tools.get(name)
 
-    def execute(self, name: str, **kwargs: Any) -> Dict[str, Any]:
+    def execute(self, name: str, trace_id: Optional[str] = None, **kwargs: Any) -> Dict[str, Any]:
         tool = self.get(name)
         if not tool:
             return {"status": "error", "error": f"unknown_tool:{name}"}
         decision = self._policy.check(tool.name, tool.safe, params=kwargs)
+        if trace_id:
+            tracer = get_tracer()
+            tracer.record_step(
+                trace_id,
+                "policy_snapshot",
+                {
+                    "tool": name,
+                    "policy_hash": self._policy.policy_hash,
+                    "policy_path": self._policy.policy_path,
+                    "policy_enforced": self._policy._enforce,
+                    "decision": "allow" if decision.allowed else "deny",
+                    "reason": decision.reason,
+                    "rule": decision.rule,
+                },
+            )
         if not decision.allowed:
             response = {
                 "status": "error",

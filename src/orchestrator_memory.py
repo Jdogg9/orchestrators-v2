@@ -1,7 +1,9 @@
 import hashlib
-from typing import Optional, Dict, Any
+import os
+from typing import Optional, Dict, Any, List
 
 from src.memory import capture_candidate_memory, should_capture_user_message, _record_memory_write_decision
+from src.semantic_router import SemanticMatch
 
 
 def evaluate_memory_capture(
@@ -57,6 +59,50 @@ def evaluate_memory_capture(
         "decision": "deny",
         "reason": "deny:policy_write_disabled",
         "candidate_id": None,
+    }
+
+
+def apply_semantic_ambiguity_guard(
+    decision: Any,
+    semantic_candidates: List[SemanticMatch],
+) -> Dict[str, Any]:
+    min_confidence = float(os.getenv("ORCH_INTENT_MIN_CONFIDENCE", "0.85"))
+    min_gap = float(os.getenv("ORCH_INTENT_MIN_GAP", "0.05"))
+
+    if not decision or not getattr(decision, "tool", None):
+        return {
+            "allowed": True,
+            "reason": "no_tool_selected",
+            "confidence": 0.0,
+            "gap": None,
+        }
+
+    confidence = float(getattr(decision, "confidence", 0.0) or 0.0)
+    if confidence < min_confidence:
+        return {
+            "allowed": False,
+            "reason": "hitl_low_confidence",
+            "confidence": confidence,
+            "gap": None,
+            "message": "Ambiguous intent detected. Human review required before tool execution.",
+        }
+
+    if semantic_candidates and len(semantic_candidates) > 1:
+        gap = float(semantic_candidates[0].score - semantic_candidates[1].score)
+        if gap < min_gap:
+            return {
+                "allowed": False,
+                "reason": "hitl_ambiguous",
+                "confidence": confidence,
+                "gap": gap,
+                "message": "Ambiguous intent detected (tight semantic gap). Human review required.",
+            }
+
+    return {
+        "allowed": True,
+        "reason": "intent_confident",
+        "confidence": confidence,
+        "gap": None,
     }
 
 

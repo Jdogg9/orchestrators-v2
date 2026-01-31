@@ -4,6 +4,7 @@ import logging
 import os
 import re
 from dataclasses import dataclass
+import hashlib
 from typing import Dict, List, Optional
 
 import yaml
@@ -24,9 +25,11 @@ class PolicyEngine:
     Rules are evaluated in order and should be deterministic/auditable.
     """
 
-    def __init__(self, rules: List[Dict[str, str]], enforce: bool) -> None:
+    def __init__(self, rules: List[Dict[str, str]], enforce: bool, policy_hash: str | None, policy_path: str | None) -> None:
         self._rules = rules
         self._enforce = enforce
+        self.policy_hash = policy_hash
+        self.policy_path = policy_path
 
     @classmethod
     def from_env(cls) -> "PolicyEngine":
@@ -34,11 +37,13 @@ class PolicyEngine:
         policy_path = os.getenv("ORCH_TOOL_POLICY_PATH", "config/tool_policy.yaml")
         if not os.path.exists(policy_path):
             logger.warning("Tool policy file missing", extra={"extra": {"path": policy_path}})
-            return cls(rules=[], enforce=enforce)
-        with open(policy_path, "r", encoding="utf-8") as handle:
-            payload = yaml.safe_load(handle) or {}
+            return cls(rules=[], enforce=enforce, policy_hash=None, policy_path=policy_path)
+        with open(policy_path, "rb") as handle:
+            raw = handle.read()
+        payload = yaml.safe_load(raw) or {}
         rules = payload.get("rules", [])
-        return cls(rules=rules, enforce=enforce)
+        policy_hash = compute_policy_hash(raw, enforce)
+        return cls(rules=rules, enforce=enforce, policy_hash=policy_hash, policy_path=policy_path)
 
     def check(self, tool_name: str, safe: bool, params: Optional[Dict[str, object]] = None) -> PolicyDecision:
         if not self._enforce:
@@ -94,3 +99,29 @@ class PolicyEngine:
                 return False
 
         return True
+
+
+def compute_policy_hash(policy_bytes: bytes, enforce: bool) -> str:
+    hasher = hashlib.sha256()
+    hasher.update(policy_bytes)
+    hasher.update(b"|enforce=")
+    hasher.update(b"1" if enforce else b"0")
+    return hasher.hexdigest()
+
+
+def load_policy_snapshot() -> Dict[str, Optional[str]]:
+    enforce = os.getenv("ORCH_TOOL_POLICY_ENFORCE", "0") == "1"
+    policy_path = os.getenv("ORCH_TOOL_POLICY_PATH", "config/tool_policy.yaml")
+    if not os.path.exists(policy_path):
+        return {
+            "policy_path": policy_path,
+            "policy_hash": None,
+            "policy_enforced": "1" if enforce else "0",
+        }
+    with open(policy_path, "rb") as handle:
+        raw = handle.read()
+    return {
+        "policy_path": policy_path,
+        "policy_hash": compute_policy_hash(raw, enforce),
+        "policy_enforced": "1" if enforce else "0",
+    }

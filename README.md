@@ -11,6 +11,8 @@ You get deterministic routing + tools without turning into a sprawling framework
 
 - 📄 Executive Summary: EXECUTIVE_SUMMARY.md  
 - ✅ Production Action Plan: ACTION_PLAN.md
+- 🧭 Intent Router: docs/INTENT_ROUTER.md
+- 🧾 Operator Contract: docs/OPERATOR_CONTRACT.md
 
 A reproducible, local-first **privacy-first orchestration framework** with production-oriented guardrails and safety-first defaults
 for a stable identity + routing + tools + optional memory, designed for *your* machine and *your* rules.
@@ -60,17 +62,20 @@ This release hardens the orchestrator with confidence-gated routing and policy-e
 
 These layers shift the system from “works” to “safe to leave unattended.”
 
+**Storage note:** SQLite is the default for simplicity; the Postgres persistence test is skipped unless `ORCH_DATABASE_URL` is configured. Use Postgres when you need durability, concurrency, or multi-worker deployments.
+
 ## Repo Facts (checked by tests)
 <!-- REPO_FACTS_START -->
-- **Server routes**: `/health`, `/ready`, `/metrics`, `/echo`, `/v1/chat/completions`, `/v1/tools/execute`, `/v1/agents`, `/v1/agents/<name>`, `/v1/agents/<name>/chat`
+- **Server routes**: `/health`, `/ready`, `/metrics`, `/echo`, `/v1/chat/completions`, `/v1/tools/execute`, `/v1/agents`, `/v1/agents/<name>`, `/v1/agents/<name>/chat`, `/v1/audit/verify`
 - **Default bind**: `ORCH_PORT=8088`, `ORCH_HOST=127.0.0.1`
 - **Environment flag**: `ORCH_ENV`
 - **API flag**: `ORCH_ENABLE_API`
 - **Auth flags**: `ORCH_REQUIRE_BEARER`, `ORCH_BEARER_TOKEN`
 - **LLM flags**: `ORCH_LLM_ENABLED`, `ORCH_LLM_PROVIDER`, `ORCH_OLLAMA_URL`, `ORCH_MODEL_CHAT`, `ORCH_LLM_TIMEOUT_SEC`, `ORCH_LLM_HEALTH_TIMEOUT_SEC`
 - **Safety flags**: `ORCH_MAX_REQUEST_BYTES`, `ORCH_RATE_LIMIT_ENABLED`, `ORCH_RATE_LIMIT`, `ORCH_RATE_LIMIT_STORAGE_URL`, `ORCH_LOG_JSON`, `ORCH_LOG_LEVEL`, `ORCH_METRICS_ENABLED`
-- **Routing flags**: `ORCH_ORCHESTRATOR_MODE`, `ORCH_ROUTER_POLICY_PATH`
+- **Routing flags**: `ORCH_ORCHESTRATOR_MODE`, `ORCH_ROUTER_POLICY_PATH`, `ORCH_INTENT_ROUTER_ENABLED`, `ORCH_INTENT_ROUTER_SHADOW`, `ORCH_INTENT_DECISION_EXPOSE`
 - **Semantic routing flags**: `ORCH_SEMANTIC_ROUTER_ENABLED`, `ORCH_SEMANTIC_ROUTER_MIN_SIMILARITY`, `ORCH_SEMANTIC_ROUTER_EMBED_MODEL`, `ORCH_SEMANTIC_ROUTER_OLLAMA_URL`, `ORCH_SEMANTIC_ROUTER_TIMEOUT_SEC`
+- **Intent routing flags**: `ORCH_INTENT_MIN_CONFIDENCE`, `ORCH_INTENT_MIN_GAP`, `ORCH_INTENT_CACHE_ENABLED`, `ORCH_INTENT_CACHE_DB_PATH`, `ORCH_INTENT_CACHE_TTL_SEC`, `ORCH_INTENT_HITL_ENABLED`, `ORCH_INTENT_HITL_DB_PATH`
 - **DB flags**: `ORCH_DATABASE_URL`, `ORCH_DB_POOL_RECYCLE`, `ORCH_SQLITE_WAL_ENABLED`
 - **Sandbox flags**: `ORCH_TOOL_SANDBOX_ENABLED`, `ORCH_TOOL_SANDBOX_REQUIRED`, `ORCH_TOOL_SANDBOX_FALLBACK`, `ORCH_SANDBOX_IMAGE`, `ORCH_SANDBOX_TIMEOUT_SEC`, `ORCH_SANDBOX_MEMORY_MB`, `ORCH_SANDBOX_CPU`, `ORCH_SANDBOX_TOOL_DIR`
 - **Tool policy flags**: `ORCH_TOOL_POLICY_ENFORCE`, `ORCH_TOOL_POLICY_PATH`
@@ -78,8 +83,8 @@ These layers shift the system from “works” to “safe to leave unattended.�
 - **Tool output flags**: `ORCH_TOOL_OUTPUT_MAX_CHARS`, `ORCH_TOOL_OUTPUT_SCRUB_ENABLED`, `ORCH_POLICY_DECISIONS_IN_RESPONSE`
 - **OTel flags**: `ORCH_OTEL_ENABLED`, `ORCH_OTEL_EXPORTER_OTLP_ENDPOINT`, `ORCH_SERVICE_NAME`
 - **Trace flags**: `ORCH_TRACE_ENABLED`, `ORCH_TRACE_DB_PATH`
-- **Memory flags**: `ORCH_MEMORY_ENABLED`, `ORCH_MEMORY_CAPTURE_ENABLED`, `ORCH_MEMORY_WRITE_POLICY`, `ORCH_MEMORY_CAPTURE_TTL_MINUTES`, `ORCH_MEMORY_DB_PATH`
-- **SQLite tables**: `traces`, `trace_steps`, `memory_candidates`
+- **Memory flags**: `ORCH_MEMORY_ENABLED`, `ORCH_MEMORY_CAPTURE_ENABLED`, `ORCH_MEMORY_WRITE_POLICY`, `ORCH_MEMORY_CAPTURE_TTL_MINUTES`, `ORCH_MEMORY_DB_PATH`, `ORCH_MEMORY_SCRUB_REDACT_PII`
+- **SQLite tables**: `traces`, `trace_steps`, `memory_candidates`, `intent_cache`, `hitl_queue`
 - **Memory decision taxonomy**: `allow:explicit_intent`, `allow:dedupe_update`, `allow:capture_only`, `deny:feature_disabled`, `deny:policy_write_disabled`, `deny:no_explicit_intent`, `deny:scrubbed_too_short`, `deny:sensitive_content`, `deny:error`
 - **Toy example**: `examples/toy_orchestrator.py` uses an AST-safe evaluator (no `eval`).
 - **Non-goals**: not a cloud/SaaS platform; no autonomous multi-agent planning in core (policy routing is deterministic)
@@ -137,6 +142,11 @@ curl -X POST http://127.0.0.1:8088/v1/agents/holly/chat \
 **CI preflight:** Run these locally before pushing to match the CI gates and order.
 
 **Shortcut:** `./scripts/dev_quickstart.sh`
+
+**One-command test runner:** `./scripts/run_tests.sh`
+
+**CI routing report:** Each PR uploads a `ci-routing-report` artifact with golden-case count, tier distribution, mismatch counts, and HITL rate.
+Generate locally with `make routing-report` or `./scripts/routing_report.sh`.
 
 ```bash
 # CI preflight (mirrors .github/workflows/ci.yml order)
@@ -272,6 +282,8 @@ Server runs on `http://127.0.0.1:8088` and stays local-only by default.
 
 - [Operational Philosophy](docs/OPERATIONAL_PHILOSOPHY.md) - **Why** we built it this way (bounded memory, receipts, rehearsals, defaults off, automation)
 - [Architecture](docs/ARCHITECTURE.md) - Layer design (API → orchestrator → tools → persistence)
+- [Unavoidable Architecture](docs/UNAVOIDABLE_ARCHITECTURE.md) - The definitive safety-first blueprint
+- [Industry Leader Review (Jan 2026)](docs/INDUSTRY_REVIEW_JAN_2026.md) - Executive assessment of the release
 - [Threat Model](docs/THREAT_MODEL.md) - Security stance and mitigations
 - [Compliance Story](docs/COMPLIANCE_STORY.md) - What gets logged, receipts, offline ops
 - [Interop & Migration](docs/INTEROP_AND_MIGRATION.md) - Mapping from LangGraph/CrewAI concepts

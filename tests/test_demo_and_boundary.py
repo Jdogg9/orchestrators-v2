@@ -7,6 +7,10 @@ from pathlib import Path
 def test_boundary_verification_script_runs():
     repo_root = Path(__file__).resolve().parents[1]
     script_path = repo_root / "scripts" / "verify_public_boundary.sh"
+    instance_dir = repo_root / "instance"
+    if instance_dir.exists():
+        for db_file in instance_dir.glob("*.db"):
+            db_file.unlink()
 
     completed = subprocess.run(
         ["bash", str(script_path)],

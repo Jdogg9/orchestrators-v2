@@ -4,9 +4,12 @@ import os
 from typing import Any, Dict, List, Optional
 
 from src.advanced_router import ModelRouter, PolicyRouter
+from src.intent_router import IntentRouter
 from src.llm_provider import get_provider
 from src.router import Rule, RuleRouter, RouteDecision
-from src.semantic_router import SemanticRouter
+from src.orchestrator_memory import apply_semantic_ambiguity_guard
+from src.semantic_router import SemanticRouter, SemanticMatch
+from src.tracer import get_tracer
 from src.tool_registry import ToolRegistry, ToolSpec
 from src.tools.math import evaluate_expression, SafeMathError
 
@@ -14,28 +17,87 @@ from src.tools.math import evaluate_expression, SafeMathError
 class Orchestrator:
     """Production-oriented orchestrator with policy routing and sandboxing."""
 
-    def __init__(self) -> None:
+    def __init__(
+        self,
+        shadow_total_counter=None,
+        shadow_mismatch_counter=None,
+    ) -> None:
         self.registry = ToolRegistry()
         self._register_default_tools()
         self.router = self._load_router()
         self.model_router = ModelRouter()
         self.semantic_router = SemanticRouter.from_env(self.registry.list_tools())
+        self.intent_router = IntentRouter.from_env(self.router, self.semantic_router)
+        self.shadow_total_counter = shadow_total_counter
+        self.shadow_mismatch_counter = shadow_mismatch_counter
 
-    def handle(self, messages: List[Dict[str, str]]) -> Dict[str, Any]:
+    def handle(self, messages: List[Dict[str, str]], trace_id: Optional[str] = None) -> Dict[str, Any]:
         user_input = self._last_user_message(messages)
-        decision = self.router.route(user_input)
-        semantic_candidates = []
-        if not decision.tool and self.semantic_router.enabled:
-            semantic_decision, semantic_candidates = self.semantic_router.route_with_diagnostics(user_input)
-            if semantic_decision.tool:
-                decision = semantic_decision
+        intent_decision = None
+        intent_shadow = os.getenv("ORCH_INTENT_ROUTER_SHADOW", "0") == "1"
+        semantic_candidates: List[SemanticMatch] = []
+        hitl_message = None
+        if self.intent_router.enabled:
+            intent_decision = self.intent_router.route(user_input, trace_id=trace_id)
+            semantic_candidates = self._semantic_candidates_from_intent(intent_decision)
+
+            if not intent_shadow:
+                if intent_decision.requires_hitl or intent_decision.deny_reason:
+                    hitl_reason = intent_decision.deny_reason or "hitl_required"
+                    hitl_decision = RouteDecision(
+                        tool=None,
+                        params={},
+                        confidence=float(intent_decision.confidence or 0.0),
+                        reason=hitl_reason,
+                    )
+                    return {
+                        "assistant_content": intent_decision.evidence.get(
+                            "hitl_message", "Human review required."
+                        ),
+                        "route_decision": hitl_decision,
+                        "intent_decision": intent_decision,
+                        "tool_result": None,
+                        "model_decision": None,
+                        "semantic_candidates": semantic_candidates[:2],
+                    }
+
+                if intent_decision.intent_id:
+                    decision = RouteDecision(
+                        tool=intent_decision.intent_id,
+                        params=intent_decision.tool_params or {},
+                        confidence=float(intent_decision.confidence or 0.0),
+                        reason="intent_router",
+                    )
+                else:
+                    decision = RouteDecision(
+                        tool=None,
+                        params={},
+                        confidence=float(intent_decision.confidence or 0.0),
+                        reason="intent_router_no_match",
+                    )
+            else:
+                decision, semantic_candidates, hitl_message = self._legacy_route(user_input, trace_id)
+                self._record_shadow_metrics(intent_decision, decision, bool(hitl_message))
+        else:
+            decision, semantic_candidates, hitl_message = self._legacy_route(user_input, trace_id)
+
+        if hitl_message:
+            return {
+                "assistant_content": hitl_message,
+                "route_decision": decision,
+                "intent_decision": intent_decision,
+                "tool_result": None,
+                "model_decision": None,
+                "semantic_candidates": semantic_candidates[:2],
+            }
 
         if decision.tool:
             params = self._build_tool_params(decision, user_input)
-            tool_result = self.registry.execute(decision.tool, **params)
+            tool_result = self.registry.execute(decision.tool, trace_id=trace_id, **params)
             return {
                 "assistant_content": self._tool_response_content(decision, tool_result),
                 "route_decision": decision,
+                "intent_decision": intent_decision,
                 "tool_result": tool_result,
                 "model_decision": None,
                 "semantic_candidates": semantic_candidates[:2],
@@ -48,6 +110,7 @@ class Orchestrator:
             return {
                 "assistant_content": llm_response.content,
                 "route_decision": decision,
+                "intent_decision": intent_decision,
                 "tool_result": None,
                 "model_decision": model_decision,
                 "semantic_candidates": semantic_candidates[:2],
@@ -56,6 +119,7 @@ class Orchestrator:
         return {
             "assistant_content": f"[ORCHESTRATORS_V2 stub] You said: {user_input}",
             "route_decision": decision,
+            "intent_decision": intent_decision,
             "tool_result": None,
             "model_decision": None,
             "semantic_candidates": semantic_candidates[:2],
@@ -180,6 +244,52 @@ class Orchestrator:
         if tool_result.get("status") != "ok":
             return f"Tool error ({decision.tool}): {tool_result.get('error')}"
         return f"Tool [{decision.tool}] result: {tool_result.get('result')}"
+
+    @staticmethod
+    def _semantic_candidates_from_intent(intent_decision) -> List[SemanticMatch]:
+        if not intent_decision:
+            return []
+        topk = intent_decision.evidence.get("semantic_topk") or []
+        return [SemanticMatch(tool=item["tool"], score=item["score"]) for item in topk if "tool" in item]
+
+    def _record_shadow_metrics(self, intent_decision, legacy_decision: RouteDecision, legacy_hitl: bool) -> None:
+        if not self.shadow_total_counter or not self.shadow_mismatch_counter:
+            return
+        self.shadow_total_counter.inc()
+
+        if not intent_decision:
+            return
+
+        intent_tool = intent_decision.intent_id
+        if intent_tool != legacy_decision.tool:
+            self.shadow_mismatch_counter.inc()
+            return
+
+        if bool(intent_decision.requires_hitl) != bool(legacy_hitl):
+            self.shadow_mismatch_counter.inc()
+
+    def _legacy_route(self, user_input: str, trace_id: Optional[str]) -> tuple[RouteDecision, List[SemanticMatch], Optional[str]]:
+        decision = self.router.route(user_input)
+        semantic_candidates: List[SemanticMatch] = []
+        if not decision.tool and self.semantic_router.enabled:
+            semantic_decision, semantic_candidates = self.semantic_router.route_with_diagnostics(user_input)
+            if semantic_decision.tool:
+                decision = semantic_decision
+
+        guard = apply_semantic_ambiguity_guard(decision, semantic_candidates)
+        if trace_id:
+            tracer = get_tracer()
+            tracer.record_step(trace_id, "semantic_ambiguity_guard", guard)
+        if not guard.get("allowed", True):
+            hitl_decision = RouteDecision(
+                tool=None,
+                params={},
+                confidence=guard.get("confidence", 0.0) or 0.0,
+                reason=guard.get("reason", "hitl_required"),
+            )
+            return hitl_decision, semantic_candidates, guard.get("message", "Human review required.")
+
+        return decision, semantic_candidates, None
 
     @staticmethod
     def _last_user_message(messages: List[Dict[str, str]]) -> str:

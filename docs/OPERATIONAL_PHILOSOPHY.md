@@ -26,6 +26,16 @@ This document captures the **principles** (not implementation) behind ORCHESTRAT
 
 **Why**: Assertions decay. Receipts don't.
 
+### 2.1 Audit-Ready Infrastructure
+
+**Philosophy**: If policy changes, trust changes. Therefore receipts must bind to policy state.
+
+- Trace receipts include a **policy hash** captured at decision-time
+- Audit endpoints can verify receipts against the current policy snapshot
+- Any mismatch is treated as a review event, not a silent pass
+
+**Why**: Evidence is only meaningful when tied to the exact policy that produced it.
+
 ### 3. Rehearsal Before Release
 
 **Philosophy**: Dress rehearsals reveal what staging tests miss.
@@ -47,6 +57,16 @@ This document captures the **principles** (not implementation) behind ORCHESTRAT
 - Example: `.env.example` ships with all power tools off, localhost-only
 
 **Why**: Safety by default. Power by choice.
+
+### 4.1 Deterministic Safety Interlocks
+
+**Philosophy**: Ambiguous intent is a safety event, not a routing guess.
+
+- Intent routing uses confidence thresholds and semantic gap checks
+- If confidence < 0.85 or gap is tight, execution **fails open** to HITL
+- Tool execution is never best-guess when ambiguity is detected
+
+**Why**: Determinism prevents silent, high-stakes errors.
 
 ### 5. Automation Over Heroics
 

@@ -2,6 +2,31 @@
 # Enable with: ORCH_TOOL_POLICY_ENFORCE=1
 # Paths can be overridden via ORCH_TOOL_POLICY_PATH
 
+policy:
+  version: "2026-01"
+  intent_router:
+    tiers:
+      - name: tier1_fast_track
+        description: "Cached/SLM routing for routine tasks"
+        min_confidence: 0.90
+      - name: tier2_reasoned
+        description: "Decomposition required for complex intent"
+        min_confidence: 0.85
+      - name: tier3_escalation
+        description: "High-risk or ambiguous intent triggers HITL"
+        min_confidence: 0.85
+    ambiguity:
+      min_confidence: 0.85
+      min_gap: 0.05
+      action: hitl
+    hitl:
+      message: "Ambiguous intent detected. Human review required before tool execution."
+  memory:
+    scrub_pii: true
+    redact_credentials: true
+  audit:
+    policy_hash_required: true
+
 rules:
   - match: "^echo$"
     action: allow

@@ -1,0 +1,303 @@
+cases:
+  - id: tier0_echo
+    prompt: "echo hello world"
+    expected:
+      tier_used: 0
+      intent_id: "echo"
+      requires_hitl: false
+      deny_reason: null
+    shadow_compare: true
+
+  - id: tier0_calc
+    prompt: "calc 2 + 2"
+    expected:
+      tier_used: 0
+      intent_id: "safe_calc"
+      requires_hitl: false
+      deny_reason: null
+    shadow_compare: true
+
+  - id: tier0_deny_pattern
+    prompt: "rm -rf /home/user"
+    expected:
+      tier_used: 0
+      intent_id: null
+      requires_hitl: false
+      deny_reason: "tier0_deny"
+    shadow_compare: false
+
+  - id: tier0_allow_pattern
+    prompt: "status ping"
+    expected:
+      tier_used: 0
+      intent_id: "allow_pattern"
+      requires_hitl: false
+      deny_reason: null
+    shadow_compare: false
+
+  - id: tier2_summarize
+    prompt: "summarize this article"
+    semantic:
+      tool: "summarize_text"
+      score: 0.93
+      runner_up:
+        tool: "echo"
+        score: 0.6
+    expected:
+      tier_used: 2
+      intent_id: "summarize_text"
+      requires_hitl: false
+      deny_reason: null
+    shadow_compare: true
+
+  - id: tier2_web_search_hitl_required
+    prompt: "search the web for latest stl venues"
+    semantic:
+      tool: "web_search"
+      score: 0.92
+      runner_up:
+        tool: "summarize_text"
+        score: 0.7
+    expected:
+      tier_used: 2
+      intent_id: "web_search"
+      requires_hitl: true
+      deny_reason: "hitl_required"
+    shadow_compare: true
+
+  - id: tier2_python_exec_hitl_required
+    prompt: "run this python script"
+    semantic:
+      tool: "python_exec"
+      score: 0.9
+      runner_up:
+        tool: "summarize_text"
+        score: 0.4
+    expected:
+      tier_used: 2
+      intent_id: "python_exec"
+      requires_hitl: true
+      deny_reason: "hitl_required"
+    shadow_compare: true
+
+  - id: tier2_low_confidence
+    prompt: "maybe do a thing"
+    semantic:
+      tool: "echo"
+      score: 0.6
+      runner_up:
+        tool: "summarize_text"
+        score: 0.3
+    expected:
+      tier_used: 2
+      intent_id: "echo"
+      requires_hitl: true
+      deny_reason: "hitl_low_confidence"
+    shadow_compare: true
+
+  - id: tier2_ambiguous_gap
+    prompt: "do something ambiguous"
+    semantic:
+      tool: "echo"
+      score: 0.9
+      runner_up:
+        tool: "summarize_text"
+        score: 0.87
+    expected:
+      tier_used: 2
+      intent_id: "echo"
+      requires_hitl: true
+      deny_reason: "hitl_ambiguous"
+    shadow_compare: true
+
+  - id: tier2_no_match
+    prompt: "just chatting about music"
+    semantic:
+      tool: null
+      score: 0.0
+    expected:
+      tier_used: 2
+      intent_id: null
+      requires_hitl: false
+      deny_reason: null
+    shadow_compare: true
+
+  - id: tier2_cacheable_high_conf
+    prompt: "summarize this report"
+    semantic:
+      tool: "summarize_text"
+      score: 0.95
+      runner_up:
+        tool: "echo"
+        score: 0.5
+    expected:
+      tier_used: 2
+      intent_id: "summarize_text"
+      requires_hitl: false
+      deny_reason: null
+    shadow_compare: true
+
+  - id: tier2_tool_echo
+    prompt: "please echo this message"
+    semantic:
+      tool: "echo"
+      score: 0.91
+      runner_up:
+        tool: "summarize_text"
+        score: 0.3
+    expected:
+      tier_used: 2
+      intent_id: "echo"
+      requires_hitl: false
+      deny_reason: null
+    shadow_compare: true
+
+  - id: tier2_tool_calc
+    prompt: "calculate 5 + 7"
+    semantic:
+      tool: "safe_calc"
+      score: 0.9
+      runner_up:
+        tool: "echo"
+        score: 0.4
+    expected:
+      tier_used: 2
+      intent_id: "safe_calc"
+      requires_hitl: false
+      deny_reason: null
+    shadow_compare: true
+
+  - id: tier2_tool_summarize_short
+    prompt: "summarize this"
+    semantic:
+      tool: "summarize_text"
+      score: 0.88
+      runner_up:
+        tool: "echo"
+        score: 0.2
+    expected:
+      tier_used: 2
+      intent_id: "summarize_text"
+      requires_hitl: false
+      deny_reason: null
+    shadow_compare: true
+
+  - id: tier2_tool_web_search_alt
+    prompt: "find recent news about llm routing"
+    semantic:
+      tool: "web_search"
+      score: 0.91
+      runner_up:
+        tool: "summarize_text"
+        score: 0.6
+    expected:
+      tier_used: 2
+      intent_id: "web_search"
+      requires_hitl: true
+      deny_reason: "hitl_required"
+    shadow_compare: true
+
+  - id: tier2_tool_exec_low_conf
+    prompt: "execute some code"
+    semantic:
+      tool: "python_exec"
+      score: 0.7
+      runner_up:
+        tool: "echo"
+        score: 0.1
+    expected:
+      tier_used: 2
+      intent_id: "python_exec"
+      requires_hitl: true
+      deny_reason: "hitl_low_confidence"
+    shadow_compare: true
+
+  - id: tier2_tool_exec_ambiguous
+    prompt: "run code maybe"
+    semantic:
+      tool: "python_exec"
+      score: 0.89
+      runner_up:
+        tool: "summarize_text"
+        score: 0.86
+    expected:
+      tier_used: 2
+      intent_id: "python_exec"
+      requires_hitl: true
+      deny_reason: "hitl_ambiguous"
+    shadow_compare: true
+
+  - id: tier2_tool_exec_clear
+    prompt: "run a script"
+    semantic:
+      tool: "python_exec"
+      score: 0.96
+      runner_up:
+        tool: "summarize_text"
+        score: 0.2
+    expected:
+      tier_used: 2
+      intent_id: "python_exec"
+      requires_hitl: true
+      deny_reason: "hitl_required"
+    shadow_compare: true
+
+  - id: tier2_tool_web_search_strict
+    prompt: "look up something on the web"
+    semantic:
+      tool: "web_search"
+      score: 0.88
+      runner_up:
+        tool: "summarize_text"
+        score: 0.5
+    expected:
+      tier_used: 2
+      intent_id: "web_search"
+      requires_hitl: true
+      deny_reason: "hitl_required"
+    shadow_compare: true
+
+  - id: tier2_tool_echo_low_conf
+    prompt: "please echo perhaps"
+    semantic:
+      tool: "echo"
+      score: 0.7
+      runner_up:
+        tool: "summarize_text"
+        score: 0.2
+    expected:
+      tier_used: 2
+      intent_id: "echo"
+      requires_hitl: true
+      deny_reason: "hitl_low_confidence"
+    shadow_compare: true
+
+  - id: tier2_tool_summarize_ambiguous
+    prompt: "summarize maybe or echo"
+    semantic:
+      tool: "summarize_text"
+      score: 0.9
+      runner_up:
+        tool: "echo"
+        score: 0.87
+    expected:
+      tier_used: 2
+      intent_id: "summarize_text"
+      requires_hitl: true
+      deny_reason: "hitl_ambiguous"
+    shadow_compare: true
+
+  - id: tier2_tool_summarize_low_conf
+    prompt: "summarize if you can"
+    semantic:
+      tool: "summarize_text"
+      score: 0.7
+      runner_up:
+        tool: "echo"
+        score: 0.3
+    expected:
+      tier_used: 2
+      intent_id: "summarize_text"
+      requires_hitl: true
+      deny_reason: "hitl_low_confidence"
+    shadow_compare: true

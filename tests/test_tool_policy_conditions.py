@@ -12,7 +12,7 @@ def test_policy_engine_allows_short_input_when_condition_met():
         {"match": ".*", "action": "deny", "reason": "default_deny"},
     ]
 
-    engine = PolicyEngine(rules=rules, enforce=True)
+    engine = PolicyEngine(rules=rules, enforce=True, policy_hash="test", policy_path="memory")
     decision = engine.check("python_exec", safe=False, params={"code": "12345"})
 
     assert decision.allowed is True
@@ -30,7 +30,7 @@ def test_policy_engine_denies_when_condition_fails():
         {"match": ".*", "action": "deny", "reason": "default_deny"},
     ]
 
-    engine = PolicyEngine(rules=rules, enforce=True)
+    engine = PolicyEngine(rules=rules, enforce=True, policy_hash="test", policy_path="memory")
     decision = engine.check("python_exec", safe=False, params={"code": "123456"})
 
     assert decision.allowed is False
@@ -48,7 +48,7 @@ def test_policy_engine_denies_when_input_missing():
         {"match": ".*", "action": "deny", "reason": "default_deny"},
     ]
 
-    engine = PolicyEngine(rules=rules, enforce=True)
+    engine = PolicyEngine(rules=rules, enforce=True, policy_hash="test", policy_path="memory")
     decision = engine.check("python_exec", safe=False, params={})
 
     assert decision.allowed is False

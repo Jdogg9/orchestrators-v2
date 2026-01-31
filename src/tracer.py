@@ -211,6 +211,54 @@ class TraceStore:
             return
         self.record_step(trace_id, "memory_write_decision", payload)
 
+    def get_trace_steps(self, trace_id: str) -> list[Dict[str, Any]]:
+        if not self.enabled or not trace_id:
+            return []
+
+        rows = []
+        if self.engine:
+            with self.engine.begin() as conn:
+                result = conn.execute(
+                    text(
+                        """
+                        SELECT step_type, step_json, created_at
+                        FROM trace_steps
+                        WHERE trace_id = :trace_id
+                        ORDER BY created_at ASC
+                        """
+                    ),
+                    {"trace_id": trace_id},
+                )
+                rows = result.fetchall()
+        else:
+            with self._get_conn() as conn:
+                cursor = conn.execute(
+                    """
+                    SELECT step_type, step_json, created_at
+                    FROM trace_steps
+                    WHERE trace_id = ?
+                    ORDER BY created_at ASC
+                    """,
+                    (trace_id,),
+                )
+                rows = cursor.fetchall()
+
+        steps: list[Dict[str, Any]] = []
+        for row in rows:
+            step_type = row[0]
+            step_json = row[1]
+            created_at = row[2]
+            try:
+                payload = json.loads(step_json) if step_json else {}
+            except json.JSONDecodeError:
+                payload = {}
+            steps.append({
+                "step_type": step_type,
+                "payload": payload,
+                "created_at": created_at,
+            })
+        return steps
+
     def _inject_otel_context(self, payload: Dict[str, Any]) -> None:
         if os.getenv("ORCH_OTEL_ENABLED", "0") != "1":
             return
