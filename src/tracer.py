@@ -32,6 +32,9 @@ OTEL_TRACE_STEP_KEYS = {
     "model",
     "status",
     "error_type",
+    "otel_trace_id",
+    "otel_span_id",
+    "traceparent",
 }
 
 
@@ -166,6 +169,8 @@ class TraceStore:
     def record_step(self, trace_id: str, step_type: str, payload: Dict[str, Any]) -> None:
         if not self.enabled:
             return
+        payload = dict(payload)
+        self._inject_otel_context(payload)
         created_at = datetime.now(timezone.utc).isoformat()
         if self.engine:
             with self.engine.begin() as conn:
@@ -202,6 +207,23 @@ class TraceStore:
         if not self.enabled or not trace_id:
             return
         self.record_step(trace_id, "memory_write_decision", payload)
+
+    def _inject_otel_context(self, payload: Dict[str, Any]) -> None:
+        if os.getenv("ORCH_OTEL_ENABLED", "0") != "1":
+            return
+        if otel_trace is None:
+            return
+
+        span = otel_trace.get_current_span()
+        if not span:
+            return
+
+        ctx = span.get_span_context()
+        if not ctx or not ctx.is_valid:
+            return
+
+        payload.setdefault("otel_trace_id", f"{ctx.trace_id:032x}")
+        payload.setdefault("otel_span_id", f"{ctx.span_id:016x}")
 
     def _emit_otel_span(
         self,

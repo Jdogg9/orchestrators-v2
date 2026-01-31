@@ -36,3 +36,21 @@ def init_otel(app) -> None:
 
     FlaskInstrumentor().instrument_app(app)
     logger.info("OpenTelemetry enabled", extra={"extra": {"endpoint": endpoint}})
+
+
+def get_current_trace_context() -> dict[str, str] | None:
+    if os.getenv("ORCH_OTEL_ENABLED", "0") != "1":
+        return None
+
+    span = trace.get_current_span()
+    if not span:
+        return None
+
+    ctx = span.get_span_context()
+    if not ctx or not ctx.is_valid:
+        return None
+
+    return {
+        "trace_id": f"{ctx.trace_id:032x}",
+        "span_id": f"{ctx.span_id:016x}",
+    }

@@ -13,7 +13,7 @@ from flask_limiter.util import get_remote_address
 from src.orchestrator_memory import evaluate_memory_capture
 from src.orchestrator import Orchestrator
 from src.llm_provider import get_provider
-from src.observability import init_otel
+from src.observability import init_otel, get_current_trace_context
 from src.agents import get_agent, list_agents, inject_agent_prompt
 from src.tracer import get_tracer
 
@@ -90,6 +90,32 @@ orchestrator = Orchestrator()
 def start_request():
     g.request_id = request.headers.get("X-Request-ID") or str(uuid.uuid4())
     g.request_start = time.time()
+    otel_context = get_current_trace_context()
+    if otel_context:
+        g.otel_trace_id = otel_context.get("trace_id")
+        g.otel_span_id = otel_context.get("span_id")
+    g.otel_traceparent = request.headers.get("traceparent")
+
+
+def _trace_metadata(base: dict) -> dict:
+    metadata = dict(base)
+    request_id = getattr(g, "request_id", None)
+    if request_id:
+        metadata["request_id"] = request_id
+
+    otel_trace_id = getattr(g, "otel_trace_id", None)
+    if otel_trace_id:
+        metadata["otel_trace_id"] = otel_trace_id
+
+    otel_span_id = getattr(g, "otel_span_id", None)
+    if otel_span_id:
+        metadata["otel_span_id"] = otel_span_id
+
+    traceparent = getattr(g, "otel_traceparent", None)
+    if traceparent:
+        metadata["traceparent"] = traceparent
+
+    return metadata
 
 
 @app.after_request
@@ -215,10 +241,10 @@ def chat_completions():
     
     payload = request.get_json(force=True, silent=False) or {}
     tracer = get_tracer()
-    trace_handle = tracer.start_trace({
+    trace_handle = tracer.start_trace(_trace_metadata({
         "route": "/v1/chat/completions",
         "stream": bool(payload.get("stream", False)),
-    })
+    }))
     trace_id = trace_handle.trace_id if trace_handle else None
 
     messages = payload.get("messages", [])
@@ -318,11 +344,11 @@ def agents_chat(name: str):
         return jsonify({"error": {"message": "Messages required", "type": "invalid_request", "code": 400}}), 400
 
     tracer = get_tracer()
-    trace_handle = tracer.start_trace({
+    trace_handle = tracer.start_trace(_trace_metadata({
         "route": f"/v1/agents/{name}/chat",
         "agent": agent.name,
         "stream": False,
-    })
+    }))
     trace_id = trace_handle.trace_id if trace_handle else None
 
     last = next((m for m in reversed(messages) if m.get("role") == "user"), {})
