@@ -2,7 +2,7 @@
 
 ## What This Is
 
-A **sanitized, reproducible reference implementation** of the Orchestrator pattern extracted from a private system. Safe to publish, free of secrets, designed for "bring-your-own-identity."
+A **sanitized, reproducible privacy-first orchestration framework** extracted from a private system. Safe to publish, free of secrets, designed for "bring-your-own-identity."
 
 **Project relationship**: v1 (ORCHESTRATOR_V1) is historical/research; **v2 (ORCHESTRATORS_V2) is the maintained public baseline**. The "two organisms" doctrine keeps private production (v1) separate from public distribution (v2).
 
@@ -83,7 +83,7 @@ grep -r "ORCHESTRATOR\|orchestrators_v2" . --exclude-dir=.git
 cd $PROJECT_ROOT/PUBLIC_VERSION/ORCHESTRATORS_V2
 git init
 git add .
-git commit -m "initial: orchestrators_v2 reference implementation"
+git commit -m "initial: orchestrators_v2 privacy-first framework"
 ```
 
 ### 6. Push to GitHub (Fresh Repo Recommended)

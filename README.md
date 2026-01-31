@@ -3,13 +3,36 @@
 [![CI](https://github.com/Jdogg9/orchestrators-v2/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/Jdogg9/orchestrators-v2/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
+**ORCHESTRATORS_V2 is a privacy-first orchestration framework with production-oriented guardrails and safety-first defaults.**
+It runs locally, keeps data on your machine, and emits auditable receipts so you can prove what happened.
+You get deterministic routing + tools without turning into a sprawling framework.
+
 ✅ CI enforces public boundary + tests on every push/PR.
 
 - 📄 Executive Summary: EXECUTIVE_SUMMARY.md  
 - ✅ Production Action Plan: ACTION_PLAN.md
 
-A reproducible, local-first reference implementation of the **Orchestrator** pattern:
-a stable identity + routing + tools + optional memory, designed for *your* machine and *your* rules.
+A reproducible, local-first **privacy-first orchestration framework** with production-oriented guardrails and safety-first defaults
+for a stable identity + routing + tools + optional memory, designed for *your* machine and *your* rules.
+
+## Why not LangGraph / CrewAI?
+
+No dunking—just different assumptions:
+
+- **Data exfiltration risk**: Orchestrators-v2 assumes local-only by default; many multi-agent stacks assume cloud connectivity.
+- **Boundary verification**: This repo ships scripts that verify no runtime state or secrets are present before publishing.
+- **Auditable receipts**: Trace receipts (DB + logs) are first-class to support operator review and change tracking.
+
+### Privacy/Security-Oriented Comparison
+
+| Capability | Orchestrators-v2 | Typical multi-agent framework |
+| --- | --- | --- |
+| Local-first default | ✅ | ⚠️ Depends on setup |
+| Offline operation | ✅ | ⚠️ Limited/optional |
+| Boundary verification scripts | ✅ | ❌ | 
+| Audit receipts (trace DB/logs) | ✅ | ⚠️ Varies |
+| Human-governance hooks | ✅ | ⚠️ Varies |
+| Supply chain hygiene (pinning/checks) | ✅ | ⚠️ Varies |
 
 ## What This Is / What This Is Not
 
@@ -68,7 +91,7 @@ These layers shift the system from “works” to “safe to leave unattended.�
 - **v1 (ORCHESTRATOR_V1)**: Original research/prototype repo that explored the orchestrator pattern in production.
   Private repo containing identity, runtime state, and battle-tested iterations.
 
-- **v2 (ORCHESTRATORS_V2)**: Sanitized, reproducible reference implementation with safe defaults and boundary verification.
+- **v2 (ORCHESTRATORS_V2)**: Sanitized, reproducible privacy-first framework with safety-first defaults and boundary verification.
   This repo is designed for "bring-your-own-identity" and **does not** ship private prompts, runtime state, DBs, recall frames, or tokens.
 
 If you want conceptual background + earlier experiments, v1 is the source.
@@ -112,6 +135,8 @@ curl -X POST http://127.0.0.1:8088/v1/agents/holly/chat \
 
 **CI preflight:** Run these locally before pushing to match the CI gates and order.
 
+**Shortcut:** `./scripts/dev_quickstart.sh`
+
 ```bash
 # CI preflight (mirrors .github/workflows/ci.yml order)
 python -m pip install --upgrade pip
@@ -133,6 +158,12 @@ shellcheck -e SC2155 -e SC2046 -e SC2012 ./scripts/*.sh
 pytest -q tests/test_semantic_router.py tests/test_sandbox.py tests/test_tool_policy_conditions.py
 ```
 ```
+
+## Killer Demo (Local Receipts + Boundary Verification)
+
+Run the philosophy end-to-end in minutes:
+
+- [Killer demo quickstart](examples/killer_demo_local_receipts/README.md)
 
 ## Try the Orchestrator (5 minutes)
 
@@ -223,12 +254,15 @@ Server runs on `http://127.0.0.1:8088` and stays local-only by default.
 - [Operational Philosophy](docs/OPERATIONAL_PHILOSOPHY.md) - **Why** we built it this way (bounded memory, receipts, rehearsals, defaults off, automation)
 - [Architecture](docs/ARCHITECTURE.md) - Layer design (API → orchestrator → tools → persistence)
 - [Threat Model](docs/THREAT_MODEL.md) - Security stance and mitigations
+- [Compliance Story](docs/COMPLIANCE_STORY.md) - What gets logged, receipts, offline ops
+- [Interop & Migration](docs/INTEROP_AND_MIGRATION.md) - Mapping from LangGraph/CrewAI concepts
 - [Routing & Tools](docs/ROUTING_AND_TOOLS.md) - Tool registry + rule routing patterns
 - [Semantic Router Operator Guide](docs/SEMANTIC_ROUTER_OPERATIONS.md) - Tuning guidance and trace queries
 - [Production Readiness](docs/PRODUCTION_READINESS.md) - Gaps and hardening checklist
 - [Production Deployment](docs/PRODUCTION_DEPLOYMENT.md) - High-stakes stack
 - [Security Governance](docs/SECURITY_GOVERNANCE.md) - Signed commits, branch protections, dynamic scans
 - [Public Release Guide](docs/PUBLIC_RELEASE_GUIDE.md) - Maintenance workflow
+- [Trust Pack](trust_pack/README.md) - Operator checklist, audit template, deployment recipes
 
 ## Contributing
 
