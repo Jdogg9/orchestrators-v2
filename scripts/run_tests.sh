@@ -2,7 +2,7 @@
 set -euo pipefail
 
 BASE_DIR="$(cd "$(dirname "$0")/.." && pwd)"
-cd "$BASE_DIR"
+cd "$BASE_DIR" || exit
 
 rm -f instance/*.db
 
