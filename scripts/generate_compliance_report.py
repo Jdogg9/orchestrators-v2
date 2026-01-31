@@ -7,7 +7,7 @@ import os
 import sqlite3
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import List, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 from reportlab.lib.pagesizes import letter
 from reportlab.lib.units import inch
@@ -34,10 +34,23 @@ def _fetch_trace_summary(db_path: Path) -> Tuple[int, int, List[Tuple[str, str]]
         conn.close()
 
 
+def _load_vulnerability_log(log_path: Path) -> Optional[Dict[str, Any]]:
+    if not log_path.exists():
+        return None
+    try:
+        return json.loads(log_path.read_text())
+    except json.JSONDecodeError:
+        return None
+
+
 def generate_report(output_path: Path, trace_db_path: Path) -> None:
     output_path.parent.mkdir(parents=True, exist_ok=True)
 
     trace_count, step_count, recent_traces = _fetch_trace_summary(trace_db_path)
+    vulnerability_log_path = Path(
+        os.getenv("VULNERABILITY_LOG_PATH", trace_db_path.parent / "vulnerability_log.json")
+    )
+    vulnerability_log = _load_vulnerability_log(vulnerability_log_path)
 
     now = datetime.now(timezone.utc).isoformat()
     c = canvas.Canvas(str(output_path), pagesize=letter)
@@ -69,6 +82,10 @@ def generate_report(output_path: Path, trace_db_path: Path) -> None:
     c.setFont("Helvetica-Bold", 12)
     c.drawString(inch, y, "Most Recent Traces")
 
+                reachability_note = entry.get("mitigation") or entry.get("reason")
+                if reachability_note:
+                    c.drawString(inch + 12, y, f"Note: {reachability_note}")
+                    y -= 0.2 * inch
     y -= 0.25 * inch
     c.setFont("Helvetica", 10)
     if not recent_traces:
@@ -94,6 +111,33 @@ def generate_report(output_path: Path, trace_db_path: Path) -> None:
         "Token usage receipts (input/output/utilization) are recorded per request when tracing is enabled.",
     )
 
+    y -= 0.35 * inch
+    c.setFont("Helvetica-Bold", 12)
+    c.drawString(inch, y, "Dependency Health")
+
+    y -= 0.25 * inch
+    c.setFont("Helvetica", 10)
+    if not vulnerability_log:
+        c.drawString(inch, y, "No vulnerability log found (instance/vulnerability_log.json).")
+    else:
+        assessments = vulnerability_log.get("assessments", [])
+        c.drawString(
+            inch,
+            y,
+            f"Advisories tracked: {len(assessments)} (source: {vulnerability_log.get('source', 'unknown')})",
+        )
+        y -= 0.2 * inch
+        for entry in assessments:
+            if y < inch:
+                c.showPage()
+                y = height - inch
+                c.setFont("Helvetica", 10)
+            dependency = entry.get("dependency", "unknown")
+            advisory_id = entry.get("advisory_id", "pending")
+            reachability = entry.get("reachability", "unknown")
+            c.drawString(inch, y, f"{dependency} — {advisory_id} — reachability: {reachability}")
+            y -= 0.2 * inch
+
     c.showPage()
     c.save()
 
@@ -102,6 +146,28 @@ def generate_jsonld(output_path: Path, trace_db_path: Path) -> None:
     output_path.parent.mkdir(parents=True, exist_ok=True)
     trace_count, step_count, recent_traces = _fetch_trace_summary(trace_db_path)
     now = datetime.now(timezone.utc).isoformat()
+    vulnerability_log_path = Path(
+        os.getenv("VULNERABILITY_LOG_PATH", trace_db_path.parent / "vulnerability_log.json")
+    )
+    vulnerability_log = _load_vulnerability_log(vulnerability_log_path)
+
+    dependency_health = None
+    if vulnerability_log:
+        dependency_health = {
+            "source": vulnerability_log.get("source", "unknown"),
+            "status": vulnerability_log.get("status", "unknown"),
+            "log_path": str(vulnerability_log_path),
+            "assessments": [
+                {
+                    "dependency": entry.get("dependency"),
+                    "advisory_id": entry.get("advisory_id"),
+                    "reachability": entry.get("reachability"),
+                        "reachability_notes": entry.get("mitigation") or entry.get("reason"),
+                    "review_by": entry.get("review_by"),
+                }
+                for entry in vulnerability_log.get("assessments", [])
+            ],
+        }
 
     payload = {
         "@context": {
@@ -132,6 +198,7 @@ def generate_jsonld(output_path: Path, trace_db_path: Path) -> None:
                     ],
                 }
             ],
+            "dependency_health": dependency_health,
             "trace_steps_total": step_count,
             "recent_traces": [
                 {"trace_id": trace_id, "created_at": created_at}
