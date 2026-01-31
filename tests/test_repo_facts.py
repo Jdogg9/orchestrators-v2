@@ -28,7 +28,7 @@ def test_repo_facts_block_matches_expected():
     lines = _read_repo_facts_block(readme_path)
 
     expected_lines = [
-        "- **Server routes**: `/health`, `/ready`, `/metrics`, `/echo`, `/v1/chat/completions`, `/v1/tools/execute`",
+        "- **Server routes**: `/health`, `/ready`, `/metrics`, `/echo`, `/v1/chat/completions`, `/v1/tools/execute`, `/v1/agents`, `/v1/agents/<name>`, `/v1/agents/<name>/chat`",
         "- **Default bind**: `ORCH_PORT=8088`, `ORCH_HOST=127.0.0.1`",
         "- **API flag**: `ORCH_ENABLE_API`",
         "- **Auth flags**: `ORCH_REQUIRE_BEARER`, `ORCH_BEARER_TOKEN`",
@@ -44,7 +44,7 @@ def test_repo_facts_block_matches_expected():
         "- **SQLite tables**: `traces`, `trace_steps`, `memory_candidates`",
         "- **Memory decision taxonomy**: `allow:explicit_intent`, `allow:dedupe_update`, `allow:capture_only`, `deny:feature_disabled`, `deny:policy_write_disabled`, `deny:no_explicit_intent`, `deny:scrubbed_too_short`, `deny:sensitive_content`, `deny:error`",
         "- **Toy example**: `examples/toy_orchestrator.py` uses `eval()` and includes `WARNING: eval() is dangerous - toy example only!`",
-        "- **Non-goals**: not a hosted service; not a turnkey agent; no autonomous multi-agent planning in core (policy routing is deterministic)",
+        "- **Non-goals**: not a cloud/SaaS platform; no autonomous multi-agent planning in core (policy routing is deterministic)",
     ]
 
     assert lines == expected_lines

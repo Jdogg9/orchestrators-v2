@@ -14,6 +14,7 @@ from src.orchestrator_memory import evaluate_memory_capture
 from src.orchestrator import Orchestrator
 from src.llm_provider import get_provider
 from src.observability import init_otel
+from src.agents import get_agent, list_agents, inject_agent_prompt
 from src.tracer import get_tracer
 
 load_dotenv()
@@ -178,6 +179,31 @@ def _limit_route(func):
     return func
 
 
+def _resolve_orchestrator_response(messages):
+    orch_mode = os.getenv("ORCH_ORCHESTRATOR_MODE", "basic")
+    if orch_mode == "advanced":
+        result = orchestrator.handle(messages)
+        assistant_content = result["assistant_content"]
+        model_decision = result.get("model_decision")
+        tool_result = result.get("tool_result")
+        route_decision = result.get("route_decision")
+    else:
+        use_llm = os.getenv("ORCH_LLM_ENABLED", "0") == "1"
+        model_decision = None
+        tool_result = None
+        route_decision = None
+        if use_llm:
+            provider = get_provider()
+            llm_response = provider.generate(messages)
+            assistant_content = llm_response.content
+        else:
+            last = next((m for m in reversed(messages) if m.get("role") == "user"), {})
+            content = last.get("content", "")
+            assistant_content = f"[ORCHESTRATORS_V2 stub] You said: {content}"
+
+    return assistant_content, route_decision, model_decision, tool_result
+
+
 @app.post("/v1/chat/completions")
 @_limit_route
 def chat_completions():
@@ -212,35 +238,17 @@ def chat_completions():
         trace_id=trace_id,
     )
     
-    orch_mode = os.getenv("ORCH_ORCHESTRATOR_MODE", "basic")
-    if orch_mode == "advanced":
-        result = orchestrator.handle(messages)
-        assistant_content = result["assistant_content"]
-        model_decision = result.get("model_decision")
-        tool_result = result.get("tool_result")
-        route_decision = result.get("route_decision")
-    else:
-        use_llm = os.getenv("ORCH_LLM_ENABLED", "0") == "1"
-        model_decision = None
-        tool_result = None
-        route_decision = None
-        if use_llm:
-            try:
-                provider = get_provider()
-                llm_response = provider.generate(messages)
-                assistant_content = llm_response.content
-            except Exception as exc:
-                return jsonify({
-                    "error": {
-                        "message": f"LLM provider error: {exc}",
-                        "type": "provider_error",
-                        "code": 502,
-                    },
-                    "memory_decision": memory_decision,
-                }), 502
-        else:
-            # Minimal stub: echo last user message. Replace with real routing/provider calls.
-            assistant_content = f"[ORCHESTRATORS_V2 stub] You said: {content}"
+    try:
+        assistant_content, route_decision, model_decision, tool_result = _resolve_orchestrator_response(messages)
+    except Exception as exc:
+        return jsonify({
+            "error": {
+                "message": f"LLM provider error: {exc}",
+                "type": "provider_error",
+                "code": 502,
+            },
+            "memory_decision": memory_decision,
+        }), 502
 
     return jsonify({
         "id": "orch_v2_stub",
@@ -256,6 +264,111 @@ def chat_completions():
         "model_decision": model_decision.__dict__ if model_decision else None,
         "tool_result": tool_result,
     })
+
+
+@app.get("/v1/agents")
+def agents_list():
+    if not _api_enabled():
+        return jsonify({"error": {"message": "API disabled", "type": "service_unavailable", "code": 503}}), 503
+    ok, err = require_bearer()
+    if not ok:
+        return jsonify(err), 401
+
+    agents = list_agents()
+    return jsonify({"count": len(agents), "agents": agents}), 200
+
+
+@app.get("/v1/agents/<name>")
+def agents_get(name: str):
+    if not _api_enabled():
+        return jsonify({"error": {"message": "API disabled", "type": "service_unavailable", "code": 503}}), 503
+    ok, err = require_bearer()
+    if not ok:
+        return jsonify(err), 401
+
+    agent = get_agent(name)
+    if not agent:
+        return jsonify({"error": {"message": "Agent not found", "type": "not_found", "code": 404}}), 404
+
+    return jsonify({
+        "name": agent.name,
+        "description": agent.description,
+        "system_prompt": agent.system_prompt,
+        "tools": agent.tools,
+        "metadata": agent.metadata,
+    }), 200
+
+
+@app.post("/v1/agents/<name>/chat")
+@_limit_route
+def agents_chat(name: str):
+    if not _api_enabled():
+        return jsonify({"error": {"message": "API disabled", "type": "service_unavailable", "code": 503}}), 503
+    ok, err = require_bearer()
+    if not ok:
+        return jsonify(err), 401
+
+    agent = get_agent(name)
+    if not agent:
+        return jsonify({"error": {"message": "Agent not found", "type": "not_found", "code": 404}}), 404
+
+    payload = request.get_json(force=True, silent=False) or {}
+    messages = payload.get("messages", [])
+    if not messages:
+        return jsonify({"error": {"message": "Messages required", "type": "invalid_request", "code": 400}}), 400
+
+    tracer = get_tracer()
+    trace_handle = tracer.start_trace({
+        "route": f"/v1/agents/{name}/chat",
+        "agent": agent.name,
+        "stream": False,
+    })
+    trace_id = trace_handle.trace_id if trace_handle else None
+
+    last = next((m for m in reversed(messages) if m.get("role") == "user"), {})
+    content = last.get("content", "")
+    auth_header = request.headers.get("Authorization", "")
+    user_id_hash = (
+        hashlib.sha256(auth_header.encode()).hexdigest()[:16]
+        if auth_header
+        else "anonymous"
+    )
+    conversation_id = request.headers.get("X-Conversation-ID")
+    memory_decision = evaluate_memory_capture(
+        user_message=content,
+        conversation_id=conversation_id,
+        user_id_hash=user_id_hash,
+        trace_id=trace_id,
+    )
+
+    agent_messages = inject_agent_prompt(messages, agent)
+    try:
+        assistant_content, route_decision, model_decision, tool_result = _resolve_orchestrator_response(agent_messages)
+    except Exception as exc:
+        return jsonify({
+            "error": {
+                "message": f"LLM provider error: {exc}",
+                "type": "provider_error",
+                "code": 502,
+            },
+            "memory_decision": memory_decision,
+        }), 502
+
+    return jsonify({
+        "id": "orch_v2_agent",
+        "object": "chat.completion",
+        "agent": agent.name,
+        "choices": [{
+            "index": 0,
+            "message": {"role": "assistant", "content": assistant_content},
+            "finish_reason": "stop"
+        }],
+        "request_id": trace_id or getattr(g, "request_id", None),
+        "memory_decision": memory_decision,
+        "route_decision": route_decision.__dict__ if route_decision else None,
+        "model_decision": model_decision.__dict__ if model_decision else None,
+        "tool_result": tool_result,
+    }), 200
 
 
 @app.post("/v1/tools/execute")

@@ -18,15 +18,16 @@ a stable identity + routing + tools + optional memory, designed for *your* machi
 - Privacy-first patterns (no data exfiltration)
 - Guardrails for secrets, state, and runtime isolation
 - Extensible framework for tools, memory, routing
+- A turnkey agent as a hosted service (runs locally only) — verified in the 30-Second Proof below
+- Ships with a starter agent named **Holly** (optional default, fully modifiable)
 
 **❌ NOT:**
-- A turnkey agent (you bring your own models/identity)
-- A hosted service (runs locally only)
+- A cloud/SaaS platform (this runs locally only)
 - A magic model (requires Ollama/OpenAI/etc.)
 
 ## Repo Facts (checked by tests)
 <!-- REPO_FACTS_START -->
-- **Server routes**: `/health`, `/ready`, `/metrics`, `/echo`, `/v1/chat/completions`, `/v1/tools/execute`
+- **Server routes**: `/health`, `/ready`, `/metrics`, `/echo`, `/v1/chat/completions`, `/v1/tools/execute`, `/v1/agents`, `/v1/agents/<name>`, `/v1/agents/<name>/chat`
 - **Default bind**: `ORCH_PORT=8088`, `ORCH_HOST=127.0.0.1`
 - **API flag**: `ORCH_ENABLE_API`
 - **Auth flags**: `ORCH_REQUIRE_BEARER`, `ORCH_BEARER_TOKEN`
@@ -42,7 +43,7 @@ a stable identity + routing + tools + optional memory, designed for *your* machi
 - **SQLite tables**: `traces`, `trace_steps`, `memory_candidates`
 - **Memory decision taxonomy**: `allow:explicit_intent`, `allow:dedupe_update`, `allow:capture_only`, `deny:feature_disabled`, `deny:policy_write_disabled`, `deny:no_explicit_intent`, `deny:scrubbed_too_short`, `deny:sensitive_content`, `deny:error`
 - **Toy example**: `examples/toy_orchestrator.py` uses `eval()` and includes `WARNING: eval() is dangerous - toy example only!`
-- **Non-goals**: not a hosted service; not a turnkey agent; no autonomous multi-agent planning in core (policy routing is deterministic)
+- **Non-goals**: not a cloud/SaaS platform; no autonomous multi-agent planning in core (policy routing is deterministic)
 <!-- REPO_FACTS_END -->
 
 **Note on `deny:sensitive_content`**: “Sensitive content” includes secret-like patterns (keys/tokens), credentials, and other disallowed persistence classes.
@@ -75,6 +76,15 @@ curl http://127.0.0.1:8088/health
 # 3b. Readiness check
 curl http://127.0.0.1:8088/ready
 # Expected: {"status":"ready","service":"orchestrators_v2"}
+
+# 3c. Starter agent proof (Holly)
+curl http://127.0.0.1:8088/v1/agents/holly
+# Expected: {"name":"Holly", ...}
+
+curl -X POST http://127.0.0.1:8088/v1/agents/holly/chat \
+  -H "Content-Type: application/json" \
+  -d '{"messages":[{"role":"user","content":"Hello, Holly"}]}'
+# Expected: assistant response (stub or LLM-backed)
 
 **Auth policy:** When `ORCH_REQUIRE_BEARER=1`, `/v1/chat/completions` and `/metrics` require a valid `Authorization: Bearer …` token; `/health` and `/ready` remain unauthenticated for local probes.
 
