@@ -9,10 +9,30 @@ from typing import Any, Dict, Optional
 
 from sqlalchemy import text
 
+try:
+    from opentelemetry import trace as otel_trace
+except ImportError:  # Optional dependency
+    otel_trace = None
+
 from src.db import get_engine
 
 TRACE_ENABLED = os.getenv("ORCH_TRACE_ENABLED", "1") == "1"
 DEFAULT_TRACE_DB = os.getenv("ORCH_TRACE_DB_PATH", "instance/trace.db")
+
+OTEL_TRACE_STEP_KEYS = {
+    "decision",
+    "reason",
+    "explicit_intent",
+    "write_policy",
+    "scope",
+    "source",
+    "candidate_id_hash",
+    "tool_name",
+    "route",
+    "model",
+    "status",
+    "error_type",
+}
 
 
 @dataclass
@@ -176,10 +196,40 @@ class TraceStore:
                 )
                 conn.commit()
 
+        self._emit_otel_span(trace_id, step_type, created_at, payload)
+
     def record_memory_write_decision(self, trace_id: str, **payload: Any) -> None:
         if not self.enabled or not trace_id:
             return
         self.record_step(trace_id, "memory_write_decision", payload)
+
+    def _emit_otel_span(
+        self,
+        trace_id: str,
+        step_type: str,
+        created_at: str,
+        payload: Dict[str, Any],
+    ) -> None:
+        if os.getenv("ORCH_OTEL_ENABLED", "0") != "1":
+            return
+        if otel_trace is None:
+            return
+
+        attributes: Dict[str, Any] = {
+            "orchestrator.trace_id": trace_id,
+            "trace.step_type": step_type,
+            "trace.created_at": created_at,
+        }
+
+        for key in OTEL_TRACE_STEP_KEYS:
+            if key in payload:
+                value = payload.get(key)
+                if isinstance(value, (str, int, float, bool)):
+                    attributes[f"trace.{key}"] = value
+
+        tracer = otel_trace.get_tracer("orchestrators_v2.trace_steps")
+        with tracer.start_as_current_span(f"trace_step.{step_type}", attributes=attributes):
+            return
 
 
 _tracer: Optional[TraceStore] = None

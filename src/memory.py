@@ -33,6 +33,17 @@ SECRET_PATTERNS = [
     r"-----BEGIN[\sA-Z]+PRIVATE KEY-----",
 ]
 
+CONTROL_CHARS_PATTERN = r"[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]+"
+INTENT_PREFIXES = [
+    r"remember this",
+    r"remember that",
+    r"don't forget",
+    r"save this",
+    r"store this",
+    r"keep in mind",
+    r"make a note",
+]
+
 
 def _env_flag(key: str, default: str = "0") -> bool:
     return os.getenv(key, default) == "1"
@@ -62,6 +73,41 @@ def _redact_sensitive(text: str) -> str:
     for pattern in SECRET_PATTERNS:
         scrubbed = re.sub(pattern, "[REDACTED]", scrubbed, flags=re.IGNORECASE)
     return scrubbed
+
+
+def _normalize_text(text: str) -> str:
+    if not text:
+        return ""
+    normalized = re.sub(CONTROL_CHARS_PATTERN, " ", text)
+    normalized = re.sub(r"\s+", " ", normalized)
+    return normalized.strip()
+
+
+def _strip_intent_prefix(text: str) -> str:
+    if not text:
+        return ""
+    lowered = text.lower()
+    for prefix in INTENT_PREFIXES:
+        match = re.match(rf"^\s*{prefix}\s*[:\-–—]?\s*", lowered)
+        if match:
+            return text[match.end():].strip()
+    return text
+
+
+def _scrub_candidate_text(text: str, write_policy: str) -> str:
+    if not text:
+        return ""
+
+    candidate = _normalize_text(text)
+    if write_policy == "strict":
+        candidate = _strip_intent_prefix(candidate)
+    candidate = _normalize_text(candidate)
+
+    max_chars = int(_env_value("ORCH_MEMORY_MAX_CHARS", "500"))
+    if max_chars > 0 and len(candidate) > max_chars:
+        candidate = candidate[:max_chars].rstrip()
+
+    return _redact_sensitive(candidate)
 
 
 def should_capture_user_message(text: str, write_policy: str) -> bool:
@@ -189,7 +235,22 @@ def capture_candidate_memory(
         )
         return None
 
-    scrubbed = _redact_sensitive(text or "")
+    raw_text = text or ""
+    if _contains_secret_like(raw_text):
+        _record_memory_write_decision(
+            trace_id,
+            decision="deny",
+            reason="deny:sensitive_content",
+            explicit_intent=True,
+            write_policy=write_policy,
+            scrub_applied=False,
+            ttl_minutes=int(_env_value("ORCH_MEMORY_CAPTURE_TTL_MINUTES", "180")),
+            scope=scope,
+            source=source,
+        )
+        return None
+
+    scrubbed = _scrub_candidate_text(raw_text, write_policy)
     if not scrubbed or len(scrubbed.strip()) < 10:
         _record_memory_write_decision(
             trace_id,
