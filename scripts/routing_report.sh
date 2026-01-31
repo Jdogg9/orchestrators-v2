@@ -2,7 +2,7 @@
 set -u
 
 BASE_DIR="$(cd "$(dirname "$0")/.." && pwd)"
-cd "$BASE_DIR"
+cd "$BASE_DIR" || exit
 
 REPORT_DIR="artifacts"
 REPORT_FILE="$REPORT_DIR/ci_routing_report.md"
