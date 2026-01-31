@@ -21,6 +21,22 @@ registry.register(ToolSpec(name="echo", description="Echo message", handler=echo
 result = registry.execute("echo", message="hello")
 ```
 
+## Safe Calculator Tool (src/tools/math.py)
+
+`safe_calc` uses an AST-safe evaluator to avoid `eval()` and prevent code injection. The tool logic is exposed as a standalone module so policy enforcement and tracing can target it directly.
+
+### Entry Points
+- `src/tools/math.py` provides `evaluate_expression()` and `SafeMathError`.
+- `scripts/safe_calc.py` contains the AST evaluator used by the tool module.
+- `src/orchestrator.py` wires `safe_calc` to `evaluate_expression()`.
+
+### Example
+```python
+from src.tools.math import evaluate_expression
+
+result = evaluate_expression("2 + 2 * (3 - 1)")
+```
+
 ## Rule Router (src/router.py)
 
 - `RuleRouter` evaluates deterministic rules in order.
