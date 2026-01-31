@@ -2,8 +2,8 @@ exclude_dirs:
   - tests
   - examples
 skips:
-  - B101
-  - B307
-  - B404
-  - B108
-  - B603
+  - B101  # assert_used - acceptable in test code
+  - B307  # eval - safe usage with restricted builtins in calculator
+  - B404  # subprocess import - required for Docker sandbox execution
+  - B108  # hardcoded_tmp_directory - Docker tmpfs mount configuration
+  - B603  # subprocess_without_shell_equals_true - secure subprocess usage
