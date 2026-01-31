@@ -14,6 +14,9 @@ echo "==> Secret scan"
 echo "==> Security automation"
 ./scripts/security_scan.sh
 
+echo "==> Spellcheck (codespell)"
+codespell
+
 echo "==> Signed commit verification (optional)"
 ./scripts/verify_signed_commits.sh
 

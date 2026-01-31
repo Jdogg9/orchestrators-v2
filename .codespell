@@ -1,0 +1,2 @@
+[default]
+skip = ./.git,./.venv,./instance,./node_modules,./deploy/observability/grafana-dashboard.json
