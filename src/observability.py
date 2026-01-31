@@ -5,7 +5,10 @@ import os
 
 from opentelemetry import trace
 from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
-from opentelemetry.instrumentation.flask import FlaskInstrumentor
+try:
+    from opentelemetry.instrumentation.flask import FlaskInstrumentor
+except ImportError:  # Optional dependency
+    FlaskInstrumentor = None
 from opentelemetry.sdk.resources import Resource
 from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import BatchSpanProcessor
@@ -26,6 +29,10 @@ def init_otel(app) -> None:
     exporter = OTLPSpanExporter(endpoint=endpoint)
     provider.add_span_processor(BatchSpanProcessor(exporter))
     trace.set_tracer_provider(provider)
+
+    if FlaskInstrumentor is None:
+        logger.warning("OpenTelemetry Flask instrumentation not installed; skipping instrumentation")
+        return
 
     FlaskInstrumentor().instrument_app(app)
     logger.info("OpenTelemetry enabled", extra={"extra": {"endpoint": endpoint}})

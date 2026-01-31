@@ -52,6 +52,12 @@ This repo is a **reference implementation**. Below is a short, concrete checklis
    - Add SAST/DAST and secret scanning in CI.
    - Enforce branch protections and signed commits.
 
+## Testing Coverage (Current State)
+
+Today’s automated tests focus primarily on **repo facts validation** and **basic API smoke checks** (`tests/test_repo_facts.py`). This ensures documentation fidelity and minimal service health, but does not yet cover advanced routing, tool policy enforcement, sandbox execution, Postgres-backed memory/tracing, or negative-path security cases.
+
+**Next step for production hardening:** introduce integration tests for routing/model selection, policy deny paths, sandbox isolation, Postgres persistence, auth failures, and observability signal correctness.
+
 ## Scope Disclaimer
 
 This repo stays small by design. The goal is to show **how to reason about guardrails**, not to ship a full platform.
