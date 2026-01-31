@@ -82,6 +82,10 @@ def generate_report(output_path: Path, trace_db_path: Path) -> None:
     c.setFont("Helvetica-Bold", 12)
     c.drawString(inch, y, "Most Recent Traces")
 
+                reachability_note = entry.get("mitigation") or entry.get("reason")
+                if reachability_note:
+                    c.drawString(inch + 12, y, f"Note: {reachability_note}")
+                    y -= 0.2 * inch
     y -= 0.25 * inch
     c.setFont("Helvetica", 10)
     if not recent_traces:
@@ -158,6 +162,7 @@ def generate_jsonld(output_path: Path, trace_db_path: Path) -> None:
                     "dependency": entry.get("dependency"),
                     "advisory_id": entry.get("advisory_id"),
                     "reachability": entry.get("reachability"),
+                        "reachability_notes": entry.get("mitigation") or entry.get("reason"),
                     "review_by": entry.get("review_by"),
                 }
                 for entry in vulnerability_log.get("assessments", [])

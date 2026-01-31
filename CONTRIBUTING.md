@@ -241,6 +241,9 @@ We welcome security research and coordinated disclosure.
 - Remediation plan within 10 business days.
 - Coordinated disclosure window agreed upon before publication.
 
+**Reachability analysis first**
+We prioritize remediation based on exploitable paths. Vulnerabilities in unreachable code are logged as "Accepted Risks" to maintain system stability.
+
 **Safe harbor**
 We will not pursue legal action against researchers who follow this policy and act in good faith.
 
