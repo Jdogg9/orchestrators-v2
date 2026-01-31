@@ -24,6 +24,12 @@
 with exact token-density data (input/output/utilization), enabling transparent resource
 management and forensic review without storing raw prompts.
 
+## Data Sovereignty
+
+`ORCH_TOKENIZER` is 100% local-first. It does not call external services or phone home
+for metadata. Tokenization happens on the operator’s machine, preserving full control
+over safety logic and audit artifacts.
+
 ## Operating Offline / Air-Gapped
 
 - Set `ORCH_LLM_ENABLED=0` to disable external model calls.

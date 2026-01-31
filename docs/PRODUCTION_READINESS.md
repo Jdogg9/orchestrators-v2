@@ -11,6 +11,7 @@ This repo is a **reference implementation**. Below is a short, concrete checklis
 - **Request controls**: Max request size and basic rate limiting.
 - **Rate limiting backend**: Optional Redis storage via `ORCH_RATE_LIMIT_STORAGE_URL`.
 - **Structured logs**: JSON logging with request IDs and latency.
+- **Token management**: deterministic token budgets with a default cognitive budget of 16,384 tokens.
 - **Advanced routing (optional)**: Policy-driven router via `config/router_policy.yaml`.
 - **Sandboxed tools (optional)**: Docker-based execution for unsafe tools.
 - **Tool policy engine (optional)**: Deterministic allow/deny rules via `config/tool_policy.yaml`.
