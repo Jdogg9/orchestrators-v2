@@ -1,2 +1,3 @@
 [default]
 skip = ./.git,./.venv,./instance,./node_modules,./deploy/observability/grafana-dashboard.json,./ORCH_TOKENIZER/*
+skip = ./.git,./.venv,./instance,./node_modules,./deploy/observability/grafana-dashboard.json,./ORCH_TOKENIZER
