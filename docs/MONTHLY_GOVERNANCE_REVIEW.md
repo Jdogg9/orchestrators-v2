@@ -4,6 +4,7 @@
 - Review window: [YYYY-MM-01 → YYYY-MM-DD]
 - Prepared by: [Name]
 - Reviewer: [Name]
+- Next scheduled audit: 2026-03-01
 
 ## Evidence Sources
 - Vulnerability log: instance/vulnerability_log.json

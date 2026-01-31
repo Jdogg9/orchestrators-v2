@@ -81,11 +81,6 @@ def generate_report(output_path: Path, trace_db_path: Path) -> None:
     y -= 0.4 * inch
     c.setFont("Helvetica-Bold", 12)
     c.drawString(inch, y, "Most Recent Traces")
-
-                reachability_note = entry.get("mitigation") or entry.get("reason")
-                if reachability_note:
-                    c.drawString(inch + 12, y, f"Note: {reachability_note}")
-                    y -= 0.2 * inch
     y -= 0.25 * inch
     c.setFont("Helvetica", 10)
     if not recent_traces:
@@ -121,10 +116,19 @@ def generate_report(output_path: Path, trace_db_path: Path) -> None:
         c.drawString(inch, y, "No vulnerability log found (instance/vulnerability_log.json).")
     else:
         assessments = vulnerability_log.get("assessments", [])
+        status = vulnerability_log.get("status", "unknown")
+        mitigated_count = sum(1 for entry in assessments if "Mitigated" in (entry.get("mitigation") or ""))
+        accepted_count = sum(1 for entry in assessments if "Accepted" in (entry.get("mitigation") or ""))
         c.drawString(
             inch,
             y,
             f"Advisories tracked: {len(assessments)} (source: {vulnerability_log.get('source', 'unknown')})",
+        )
+        y -= 0.2 * inch
+        c.drawString(
+            inch,
+            y,
+            f"Status: {status} (mitigated: {mitigated_count}, accepted: {accepted_count})",
         )
         y -= 0.2 * inch
         for entry in assessments:
@@ -137,6 +141,10 @@ def generate_report(output_path: Path, trace_db_path: Path) -> None:
             reachability = entry.get("reachability", "unknown")
             c.drawString(inch, y, f"{dependency} — {advisory_id} — reachability: {reachability}")
             y -= 0.2 * inch
+            reachability_note = entry.get("mitigation") or entry.get("reason")
+            if reachability_note:
+                c.drawString(inch + 12, y, f"Note: {reachability_note}")
+                y -= 0.2 * inch
 
     c.showPage()
     c.save()
@@ -153,19 +161,28 @@ def generate_jsonld(output_path: Path, trace_db_path: Path) -> None:
 
     dependency_health = None
     if vulnerability_log:
+        assessments = vulnerability_log.get("assessments", [])
+        mitigated_count = sum(1 for entry in assessments if "Mitigated" in (entry.get("mitigation") or ""))
+        accepted_count = sum(1 for entry in assessments if "Accepted" in (entry.get("mitigation") or ""))
         dependency_health = {
             "source": vulnerability_log.get("source", "unknown"),
             "status": vulnerability_log.get("status", "unknown"),
             "log_path": str(vulnerability_log_path),
+            "summary": {
+                "total": len(assessments),
+                "mitigated": mitigated_count,
+                "accepted": accepted_count,
+            },
             "assessments": [
                 {
                     "dependency": entry.get("dependency"),
                     "advisory_id": entry.get("advisory_id"),
+                    "ghsa_id": entry.get("ghsa_id"),
                     "reachability": entry.get("reachability"),
-                        "reachability_notes": entry.get("mitigation") or entry.get("reason"),
+                    "reachability_notes": entry.get("mitigation") or entry.get("reason"),
                     "review_by": entry.get("review_by"),
                 }
-                for entry in vulnerability_log.get("assessments", [])
+                for entry in assessments
             ],
         }
 
