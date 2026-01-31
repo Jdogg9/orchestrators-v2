@@ -401,7 +401,11 @@ class Orchestrator:
 
         summary_enabled = force_summary or os.getenv("ORCH_TOKEN_BUDGET_SUMMARY_ENABLED", "0") == "1"
         if removed_messages and summary_enabled:
-            summary_text = self._summarize_removed(removed_messages)
+            summary_payload = self._summarize_removed(removed_messages)
+            summary_text = summary_payload.get("summary") if isinstance(summary_payload, dict) else ""
+            summary_confidence = summary_payload.get("summary_confidence_score") if isinstance(summary_payload, dict) else None
+            pinned_total = summary_payload.get("pinned_keywords_total") if isinstance(summary_payload, dict) else None
+            pinned_matched = summary_payload.get("pinned_keywords_matched") if isinstance(summary_payload, dict) else None
             if summary_text:
                 insert_at = max(system_indices) + 1 if system_indices else 0
                 if first_user_idx is not None:
@@ -413,6 +417,9 @@ class Orchestrator:
                 }
                 messages = messages[:insert_at] + [summary_message] + messages[insert_at:]
                 info["summary_added"] = True
+                info["summary_confidence_score"] = summary_confidence
+                info["pinned_keywords_total"] = pinned_total
+                info["pinned_keywords_matched"] = pinned_matched
 
         info["input_tokens"] = self._count_tokens_for_messages(messages)
         if trace_id and info["pruned_turns"]:
@@ -426,9 +433,25 @@ class Orchestrator:
                     "pruned_turns": info["pruned_turns"],
                     "summary_added": info["summary_added"],
                     "summary_forced": force_summary,
+                    "summary_confidence_score": info.get("summary_confidence_score"),
+                    "pinned_keywords_total": info.get("pinned_keywords_total"),
+                    "pinned_keywords_matched": info.get("pinned_keywords_matched"),
                 },
             )
             record_pruning_event(info["summary_added"], force_summary)
+
+            summary_confidence = info.get("summary_confidence_score")
+            if summary_confidence is not None and summary_confidence < 0.7:
+                tracer.record_step(
+                    trace_id,
+                    "summary_confidence_warning",
+                    {
+                        "summary_confidence_score": summary_confidence,
+                        "threshold": 0.7,
+                        "pinned_keywords_total": info.get("pinned_keywords_total"),
+                        "pinned_keywords_matched": info.get("pinned_keywords_matched"),
+                    },
+                )
 
         return messages, info
 
@@ -474,25 +497,56 @@ class Orchestrator:
             priorities.append(20.0 + recency * 30.0)
         return min(priorities) if priorities else 0.0
 
-    def _summarize_removed(self, removed_messages: List[Dict[str, str]]) -> str:
+    def _summarize_removed(self, removed_messages: List[Dict[str, str]]) -> Dict[str, Any]:
         if not removed_messages:
-            return ""
+            return {"summary": ""}
         removed_text = []
         for msg in removed_messages:
             content = str(msg.get("content", "")).strip()
             if content:
                 removed_text.append(f"{msg.get('role', 'unknown')}: {content}")
         if not removed_text:
-            return ""
+            return {"summary": ""}
         from src.tools.summarize import summarize_text
 
         start_time = time.time()
         summary_payload = summarize_text("\n".join(removed_text))
         record_summary_generation_latency(time.time() - start_time)
         summary = summary_payload.get("summary", "") if isinstance(summary_payload, dict) else ""
-        if summary:
-            return f"Previous Context Summary: {summary}"
-        return ""
+        if not summary:
+            return {"summary": ""}
+
+        pinned_keywords = self._extract_pinned_keywords(removed_messages)
+        matched = self._count_pinned_keyword_matches(pinned_keywords, summary)
+        total = len(pinned_keywords)
+        confidence = 1.0 if total == 0 else round(matched / total, 3)
+        return {
+            "summary": f"Previous Context Summary: {summary}",
+            "summary_confidence_score": confidence,
+            "pinned_keywords_total": total,
+            "pinned_keywords_matched": matched,
+        }
+
+    @staticmethod
+    def _extract_pinned_keywords(messages: List[Dict[str, str]]) -> List[str]:
+        keywords = set()
+        for msg in messages:
+            metadata = msg.get("metadata") if isinstance(msg.get("metadata"), dict) else {}
+            if not (msg.get("pinned") or metadata.get("pinned") or metadata.get("priority") == "pinned" or metadata.get("goal") is True):
+                continue
+            content = str(msg.get("content", ""))
+            for word in content.split():
+                token = "".join(ch for ch in word if ch.isalnum())
+                if len(token) >= 4:
+                    keywords.add(token.upper())
+        return sorted(keywords)
+
+    @staticmethod
+    def _count_pinned_keyword_matches(keywords: List[str], summary: str) -> int:
+        if not keywords or not summary:
+            return 0
+        summary_upper = summary.upper()
+        return sum(1 for keyword in keywords if keyword in summary_upper)
 
     def _count_tokens_for_messages(self, messages: List[Dict[str, str]]) -> int:
         total = 0

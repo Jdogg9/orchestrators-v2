@@ -53,6 +53,8 @@ def test_summary_context_preservation_for_pinned_keywords():
         },
     ]
 
-    summary_message = orchestrator._summarize_removed(removed_messages)
+    summary_payload = orchestrator._summarize_removed(removed_messages)
+    summary_message = summary_payload["summary"]
     for keyword in pinned_keywords:
         assert keyword in summary_message
+    assert summary_payload["summary_confidence_score"] == 1.0

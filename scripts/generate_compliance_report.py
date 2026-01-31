@@ -2,6 +2,7 @@
 """Generate a PDF compliance report from trace receipts (if present)."""
 from __future__ import annotations
 
+import json
 import os
 import sqlite3
 from datetime import datetime, timezone
@@ -97,9 +98,58 @@ def generate_report(output_path: Path, trace_db_path: Path) -> None:
     c.save()
 
 
+def generate_jsonld(output_path: Path, trace_db_path: Path) -> None:
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    trace_count, step_count, recent_traces = _fetch_trace_summary(trace_db_path)
+    now = datetime.now(timezone.utc).isoformat()
+
+    payload = {
+        "@context": {
+            "@vocab": "https://nist.gov/ai/rmf/1.0#",
+            "schema": "https://schema.org/",
+        },
+        "@type": "schema:Dataset",
+        "schema:name": "ORCHESTRATORS_V2 Governance Metrics",
+        "schema:dateCreated": now,
+        "schema:description": "Machine-readable governance export for NIST AI RMF Measure and Govern functions.",
+        "govern": {
+            "function": "Govern",
+            "artifact": "trace_receipts",
+            "trace_db": str(trace_db_path),
+            "trace_count": trace_count,
+        },
+        "measure": {
+            "function": "Measure",
+            "subcategories": [
+                {
+                    "id": "Measure-2.1",
+                    "description": "Token utilization monitoring and capacity bounds evidence.",
+                    "evidence": [
+                        "orch.token.utilization_ratio",
+                        "orch.token.pruned_input_tokens",
+                        "orch.token.pruned_messages",
+                        "orch.token.pruned_turns",
+                    ],
+                }
+            ],
+            "trace_steps_total": step_count,
+            "recent_traces": [
+                {"trace_id": trace_id, "created_at": created_at}
+                for trace_id, created_at in recent_traces
+            ],
+        },
+    }
+    output_path.write_text(json.dumps(payload, indent=2))
+
+
 if __name__ == "__main__":
     repo_root = Path(__file__).resolve().parents[1]
     trace_db = Path(os.getenv("ORCH_TRACE_DB_PATH", repo_root / "instance" / "trace.db"))
     output = Path(os.getenv("COMPLIANCE_REPORT_PATH", repo_root / "reports" / "compliance_report.pdf"))
+    jsonld_output = Path(
+        os.getenv("COMPLIANCE_REPORT_JSONLD_PATH", repo_root / "reports" / "compliance_report.jsonld")
+    )
     generate_report(output, trace_db)
+    generate_jsonld(jsonld_output, trace_db)
     print(f"Compliance report generated: {output}")
+    print(f"Compliance report JSON-LD generated: {jsonld_output}")

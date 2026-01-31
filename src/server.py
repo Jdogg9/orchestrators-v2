@@ -137,6 +137,7 @@ def create_app() -> Flask:
         if traceparent:
             response.headers["traceparent"] = traceparent
             response.headers.setdefault("X-Trace-Id", traceparent.split("-")[1])
+        response.headers["X-AI-Generated"] = "true"
         route = request.path
         method = request.method
         status = str(response.status_code)
