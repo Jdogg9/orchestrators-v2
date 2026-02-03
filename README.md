@@ -100,29 +100,32 @@ This release hardens the orchestrator with confidence-gated routing and policy-e
 
 These layers shift the system from “works” to “safe to leave unattended.”
 
+**Tool approvals:** Unsafe tool executions now require explicit, time-bound approvals by default. See docs/TOOL_APPROVAL_CONTRACT.md for the one-page contract.
+
 **Storage note:** SQLite is the default for simplicity; the Postgres persistence test is skipped unless `ORCH_DATABASE_URL` is configured. Use Postgres when you need durability, concurrency, or multi-worker deployments.
 
 ## Repo Facts (checked by tests)
 <!-- REPO_FACTS_START -->
-- **Server routes**: `/health`, `/ready`, `/metrics`, `/echo`, `/v1/chat/completions`, `/v1/tools/execute`, `/v1/agents`, `/v1/agents/<name>`, `/v1/agents/<name>/chat`, `/v1/audit/verify`
+- **Server routes**: `/health`, `/ready`, `/metrics`, `/echo`, `/v1/chat/completions`, `/v1/tools/execute`, `/v1/tools/approve`, `/v1/agents`, `/v1/agents/<name>`, `/v1/agents/<name>/chat`, `/v1/audit/verify`, `/v1/trust/events`, `/v1/trust/trace/<trace_id>`, `/v1/trust/verify/<trace_id>`
 - **Default bind**: `ORCH_PORT=8088`, `ORCH_HOST=127.0.0.1`
 - **Environment flag**: `ORCH_ENV`
 - **API flag**: `ORCH_ENABLE_API`
 - **Auth flags**: `ORCH_REQUIRE_BEARER`, `ORCH_BEARER_TOKEN`
-- **LLM flags**: `ORCH_LLM_ENABLED`, `ORCH_LLM_PROVIDER`, `ORCH_OLLAMA_URL`, `ORCH_MODEL_CHAT`, `ORCH_LLM_TIMEOUT_SEC`, `ORCH_LLM_HEALTH_TIMEOUT_SEC`
-- **Safety flags**: `ORCH_MAX_REQUEST_BYTES`, `ORCH_RATE_LIMIT_ENABLED`, `ORCH_RATE_LIMIT`, `ORCH_RATE_LIMIT_STORAGE_URL`, `ORCH_LOG_JSON`, `ORCH_LOG_LEVEL`, `ORCH_METRICS_ENABLED`
+- **LLM flags**: `ORCH_LLM_ENABLED`, `ORCH_LLM_NETWORK_ENABLED`, `ORCH_LLM_PROVIDER`, `ORCH_OLLAMA_URL`, `ORCH_MODEL_CHAT`, `ORCH_LLM_TIMEOUT_SEC`, `ORCH_LLM_HEALTH_TIMEOUT_SEC`, `ORCH_LLM_MAX_OUTPUT_CHARS`, `ORCH_LLM_RETRY_COUNT`, `ORCH_LLM_RETRY_BACKOFF_SEC`, `ORCH_LLM_CIRCUIT_MAX_FAILURES`, `ORCH_LLM_CIRCUIT_RESET_SEC`, `ORCH_LLM_MODEL_ALLOWLIST`
+- **Safety flags**: `ORCH_MAX_REQUEST_BYTES`, `ORCH_RATE_LIMIT_ENABLED`, `ORCH_RATE_LIMIT`, `ORCH_RATE_LIMIT_STORAGE_URL`, `ORCH_LOG_JSON`, `ORCH_LOG_LEVEL`, `ORCH_METRICS_ENABLED`, `ORCH_TRUST_PANEL_ENABLED`, `ORCH_TRUST_PANEL_DEBUG`, `ORCH_TRUST_PANEL_MAX_EVENTS`, `ORCH_TRUST_PANEL_MAX_VALUE_CHARS`
 - **Routing flags**: `ORCH_ORCHESTRATOR_MODE`, `ORCH_ROUTER_POLICY_PATH`, `ORCH_INTENT_ROUTER_ENABLED`, `ORCH_INTENT_ROUTER_SHADOW`, `ORCH_INTENT_DECISION_EXPOSE`
 - **Semantic routing flags**: `ORCH_SEMANTIC_ROUTER_ENABLED`, `ORCH_SEMANTIC_ROUTER_MIN_SIMILARITY`, `ORCH_SEMANTIC_ROUTER_EMBED_MODEL`, `ORCH_SEMANTIC_ROUTER_OLLAMA_URL`, `ORCH_SEMANTIC_ROUTER_TIMEOUT_SEC`
 - **Intent routing flags**: `ORCH_INTENT_MIN_CONFIDENCE`, `ORCH_INTENT_MIN_GAP`, `ORCH_INTENT_CACHE_ENABLED`, `ORCH_INTENT_CACHE_DB_PATH`, `ORCH_INTENT_CACHE_TTL_SEC`, `ORCH_INTENT_HITL_ENABLED`, `ORCH_INTENT_HITL_DB_PATH`
 - **DB flags**: `ORCH_DATABASE_URL`, `ORCH_DB_POOL_RECYCLE`, `ORCH_SQLITE_WAL_ENABLED`
 - **Sandbox flags**: `ORCH_TOOL_SANDBOX_ENABLED`, `ORCH_TOOL_SANDBOX_REQUIRED`, `ORCH_TOOL_SANDBOX_FALLBACK`, `ORCH_SANDBOX_IMAGE`, `ORCH_SANDBOX_TIMEOUT_SEC`, `ORCH_SANDBOX_MEMORY_MB`, `ORCH_SANDBOX_CPU`, `ORCH_SANDBOX_TOOL_DIR`
 - **Tool policy flags**: `ORCH_TOOL_POLICY_ENFORCE`, `ORCH_TOOL_POLICY_PATH`
+- **Tool approval flags**: `ORCH_TOOL_APPROVAL_ENFORCE`, `ORCH_TOOL_APPROVAL_TTL_SEC`, `ORCH_TOOL_APPROVAL_DB_PATH`
 - **Tool feature flags**: `ORCH_TOOL_WEB_SEARCH_ENABLED`
 - **Tool output flags**: `ORCH_TOOL_OUTPUT_MAX_CHARS`, `ORCH_TOOL_OUTPUT_SCRUB_ENABLED`, `ORCH_POLICY_DECISIONS_IN_RESPONSE`
 - **OTel flags**: `ORCH_OTEL_ENABLED`, `ORCH_OTEL_EXPORTER_OTLP_ENDPOINT`, `ORCH_SERVICE_NAME`
 - **Trace flags**: `ORCH_TRACE_ENABLED`, `ORCH_TRACE_DB_PATH`
 - **Memory flags**: `ORCH_MEMORY_ENABLED`, `ORCH_MEMORY_CAPTURE_ENABLED`, `ORCH_MEMORY_WRITE_POLICY`, `ORCH_MEMORY_CAPTURE_TTL_MINUTES`, `ORCH_MEMORY_DB_PATH`, `ORCH_MEMORY_SCRUB_REDACT_PII`
-- **SQLite tables**: `traces`, `trace_steps`, `memory_candidates`, `intent_cache`, `hitl_queue`
+- **SQLite tables**: `traces`, `trace_steps`, `memory_candidates`, `intent_cache`, `hitl_queue`, `tool_approvals`
 - **Memory decision taxonomy**: `allow:explicit_intent`, `allow:dedupe_update`, `allow:capture_only`, `deny:feature_disabled`, `deny:policy_write_disabled`, `deny:no_explicit_intent`, `deny:scrubbed_too_short`, `deny:sensitive_content`, `deny:error`
 - **Toy example**: `examples/toy_orchestrator.py` uses an AST-safe evaluator (no `eval`).
 - **Non-goals**: not a cloud/SaaS platform; no autonomous multi-agent planning in core (policy routing is deterministic)
@@ -285,6 +288,13 @@ python -m src.server
 
 Server runs on `http://127.0.0.1:8088` with OpenAI-compatible shape (optional).
 
+When `ORCH_LLM_ENABLED=0`, the API responds in safe demo mode (offline) so you can see routing, approvals, and receipts without any model calls.
+To enable LLMs safely, follow [docs/LLM_ENABLEMENT_CHECKLIST.md](docs/LLM_ENABLEMENT_CHECKLIST.md) and run `./scripts/verify_llm_enablement.sh`.
+
+**Default behavior:** non-safe tools require approval; destructive actions always require explicit approval.
+
+**Dev-only override:** `ORCH_TOOL_APPROVAL_ENFORCE=0` disables approval enforcement for local development.
+
 ## Quickstart (Docker)
 ```bash
 cp .env.example .env
@@ -313,6 +323,13 @@ Server runs on `http://127.0.0.1:8088` and stays local-only by default.
 * **Rate limits**: keyed by bearer token hash when provided (falls back to IP)
 * **Auth**: bearer token required for all non-health endpoints in production
 
+## Security Invariants
+
+* Tools cannot execute without passing `execute_tool_guarded`.
+* Approvals are bound to tool name + args hash + request ID.
+* Approvals expire and are consumed on use.
+* All tool actions emit tamper-evident receipts.
+
 **Rate limit storage**: If `ORCH_RATE_LIMIT_STORAGE_URL` is not set, limits are per-process. For multi-worker or production use, Redis is strongly recommended.
 
 **Token rotation**: update `ORCH_BEARER_TOKEN`, restart the service, and expire old tokens. Rotate on a fixed cadence (e.g., monthly) or after any incident.
@@ -330,6 +347,7 @@ Server runs on `http://127.0.0.1:8088` and stays local-only by default.
 - [Semantic Router Operator Guide](docs/SEMANTIC_ROUTER_OPERATIONS.md) - Tuning guidance and trace queries
 - [Production Readiness](docs/PRODUCTION_READINESS.md) - Gaps and hardening checklist
 - [Production Deployment](docs/PRODUCTION_DEPLOYMENT.md) - High-stakes stack
+- [LLM Enablement Checklist](docs/LLM_ENABLEMENT_CHECKLIST.md) - Safe provider enablement gates
 - [Security Governance](docs/SECURITY_GOVERNANCE.md) - Signed commits, branch protections, dynamic scans
 - [Public Release Guide](docs/PUBLIC_RELEASE_GUIDE.md) - Maintenance workflow
 - [Observability Stack](docs/OBSERVABILITY_STACK.md) - OTel + Prometheus + Grafana

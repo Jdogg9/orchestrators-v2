@@ -23,6 +23,13 @@ echo "==> Signed commit verification (optional)"
 echo "==> Dynamic scan (optional)"
 ./scripts/dynamic_scan.sh
 
+echo "==> LLM enablement check (conditional)"
+if [[ "${ORCH_LLM_ENABLED:-0}" == "1" ]]; then
+	./scripts/verify_llm_enablement.sh
+else
+	echo "LLM enablement check skipped (ORCH_LLM_ENABLED!=1)"
+fi
+
 echo "==> Pytest"
 pytest -q
 

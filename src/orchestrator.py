@@ -10,6 +10,7 @@ from src.llm_provider import get_provider
 from src.router import Rule, RuleRouter, RouteDecision
 from src.orchestrator_memory import apply_semantic_ambiguity_guard
 from src.semantic_router import SemanticRouter, SemanticMatch
+from src.demo_mode import build_demo_response
 from src.tracer import (
     get_tracer,
     record_pruning_event,
@@ -18,6 +19,7 @@ from src.tracer import (
     record_token_utilization_ratio,
 )
 from src.tool_registry import ToolRegistry, ToolSpec
+from src.approval_store import ToolApprovalStore, approval_enforced, hash_tool_args
 from src.tools.math import evaluate_expression, SafeMathError
 from src.tools.orch_tokenizer import orch_tokenizer
 
@@ -103,7 +105,11 @@ class Orchestrator:
 
         if decision.tool:
             params = self._build_tool_params(decision, user_input)
-            tool_result = self.registry.execute(decision.tool, trace_id=trace_id, **params)
+            tool_result = self.execute_tool_guarded(
+                decision.tool,
+                params,
+                trace_id=trace_id,
+            )
             self._record_token_usage(
                 trace_id,
                 messages,
@@ -128,6 +134,22 @@ class Orchestrator:
             record_tier_transition(self._tier_for_model_decision(model_decision))
             provider = get_provider(model_override=model_decision.model)
             llm_response = provider.generate(messages)
+            if trace_id:
+                tracer = get_tracer()
+                tracer.record_step(
+                    trace_id,
+                    "llm_provider",
+                    {
+                        "provider": llm_response.provider,
+                        "model": llm_response.model,
+                        "latency_ms": llm_response.latency_ms,
+                        "output_chars": len(llm_response.content),
+                        "attempts": llm_response.attempts,
+                        "truncated": llm_response.truncated,
+                        "timeout_sec": int(os.getenv("ORCH_LLM_TIMEOUT_SEC", "30")),
+                        "network_enabled": os.getenv("ORCH_LLM_NETWORK_ENABLED", "0") == "1",
+                    },
+                )
             self._record_token_usage(trace_id, messages, llm_response.content, budget_info)
             return {
                 "assistant_content": llm_response.content,
@@ -138,7 +160,7 @@ class Orchestrator:
                 "semantic_candidates": semantic_candidates[:2],
             }
 
-        stub_content = f"[ORCHESTRATORS_V2 stub] You said: {user_input}"
+        stub_content = build_demo_response(user_input, route_decision=decision, intent_decision=intent_decision)
         self._record_token_usage(trace_id, messages, stub_content, budget_info)
         return {
             "assistant_content": stub_content,
@@ -148,6 +170,54 @@ class Orchestrator:
             "model_decision": None,
             "semantic_candidates": semantic_candidates[:2],
         }
+
+    def execute_tool_guarded(
+        self,
+        tool_name: str,
+        tool_args: Dict[str, Any],
+        approval_token: Optional[str] = None,
+        trace_id: Optional[str] = None,
+        tool_executor=None,
+        approval_store: Optional[ToolApprovalStore] = None,
+    ) -> Dict[str, Any]:
+        tool = self.registry.get(tool_name)
+        if not tool:
+            return {"status": "error", "error": f"unknown_tool:{tool_name}"}
+
+        approval_required = approval_enforced() and not tool.safe
+        if approval_required:
+            store = approval_store or ToolApprovalStore()
+            args_hash = hash_tool_args(tool_args)
+            approved, reason, approval = store.validate_and_consume(
+                approval_token,
+                tool_name,
+                args_hash,
+            )
+            if trace_id:
+                tracer = get_tracer()
+                tracer.record_step(
+                    trace_id,
+                    "tool_approval",
+                    {
+                        "tool": tool_name,
+                        "approved": approved,
+                        "reason": reason,
+                        "approval_id": approval.approval_id if approval else None,
+                        "expires_at": approval.expires_at if approval else None,
+                    },
+                )
+            if not approved:
+                return {
+                    "status": "error",
+                    "tool": tool_name,
+                    "error": "approval_required",
+                    "approval_reason": reason,
+                }
+
+        if tool_executor is not None:
+            return tool_executor(tool_name, tool_args, trace_id=trace_id)
+
+        return self.registry.execute(tool_name, trace_id=trace_id, **tool_args)
 
     @staticmethod
     def _tier_for_model_decision(model_decision) -> str:

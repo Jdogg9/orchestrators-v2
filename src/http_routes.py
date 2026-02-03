@@ -10,8 +10,16 @@ from prometheus_client import CONTENT_TYPE_LATEST, generate_latest
 from src.agents import get_agent, inject_agent_prompt, list_agents
 from src.llm_provider import get_provider
 from src.orchestrator_memory import evaluate_memory_capture
+from src.demo_mode import build_demo_response
 from src.tracer import get_tracer
 from src.policy_engine import load_policy_snapshot
+from src.approval_store import ToolApprovalStore
+from src.trust_panel import (
+    trust_panel_enabled,
+    list_trust_events,
+    get_trace_report,
+    verify_trace_chain,
+)
 
 
 def register_routes(app) -> Blueprint:
@@ -63,10 +71,26 @@ def register_routes(app) -> Blueprint:
                 provider = get_provider()
                 llm_response = provider.generate(messages)
                 assistant_content = llm_response.content
+                if trace_id:
+                    tracer = get_tracer()
+                    tracer.record_step(
+                        trace_id,
+                        "llm_provider",
+                        {
+                            "provider": llm_response.provider,
+                            "model": llm_response.model,
+                            "latency_ms": llm_response.latency_ms,
+                            "output_chars": len(llm_response.content),
+                            "attempts": llm_response.attempts,
+                            "truncated": llm_response.truncated,
+                            "timeout_sec": int(os.getenv("ORCH_LLM_TIMEOUT_SEC", "30")),
+                            "network_enabled": os.getenv("ORCH_LLM_NETWORK_ENABLED", "0") == "1",
+                        },
+                    )
             else:
                 last = next((m for m in reversed(messages) if m.get("role") == "user"), {})
                 content = last.get("content", "")
-                assistant_content = f"[ORCHESTRATORS_V2 stub] You said: {content}"
+                assistant_content = build_demo_response(content)
 
         return assistant_content, route_decision, intent_decision, model_decision, tool_result, semantic_candidates
 
@@ -145,6 +169,60 @@ def register_routes(app) -> Blueprint:
             "policy_enforced": policy_snapshot.get("policy_enforced"),
             "policy_steps": policy_steps,
         }), 200
+
+    @app.get("/v1/trust/events")
+    @_limit_route
+    def trust_events():
+        if not _api_enabled() or not trust_panel_enabled():
+            return jsonify({"error": {"message": "Trust panel disabled", "type": "service_unavailable", "code": 503}}), 503
+        ok, err = require_bearer()
+        if not ok:
+            return jsonify(err), 401
+
+        limit = request.args.get("limit")
+        step_type = request.args.get("step_type")
+        trace_id = request.args.get("trace_id")
+        debug = request.args.get("debug") == "1"
+        step_types = [s.strip() for s in step_type.split(",")] if step_type else None
+        limit_value = int(limit) if limit and limit.isdigit() else None
+
+        result = list_trust_events(
+            limit=limit_value,
+            step_types=step_types,
+            trace_id=trace_id,
+            debug=debug,
+        )
+        return jsonify(result), 200
+
+    @app.get("/v1/trust/trace/<trace_id>")
+    @_limit_route
+    def trust_trace(trace_id: str):
+        if not _api_enabled() or not trust_panel_enabled():
+            return jsonify({"error": {"message": "Trust panel disabled", "type": "service_unavailable", "code": 503}}), 503
+        ok, err = require_bearer()
+        if not ok:
+            return jsonify(err), 401
+
+        debug = request.args.get("debug") == "1"
+        report = get_trace_report(trace_id, debug=debug)
+        if "error" in report:
+            return jsonify({"error": {"message": report["error"], "type": "validation_error", "code": 400}}), 400
+        return jsonify(report), 200
+
+    @app.get("/v1/trust/verify/<trace_id>")
+    @_limit_route
+    def trust_verify(trace_id: str):
+        if not _api_enabled() or not trust_panel_enabled():
+            return jsonify({"error": {"message": "Trust panel disabled", "type": "service_unavailable", "code": 503}}), 503
+        ok, err = require_bearer()
+        if not ok:
+            return jsonify(err), 401
+
+        expected_hash = request.args.get("expected_hash")
+        result = verify_trace_chain(trace_id, expected_hash=expected_hash)
+        if "error" in result:
+            return jsonify({"error": {"message": result["error"], "type": "validation_error", "code": 400}}), 400
+        return jsonify(result), 200
 
     @app.post("/v1/chat/completions")
     @_limit_route
@@ -354,11 +432,44 @@ def register_routes(app) -> Blueprint:
         payload = request.get_json(force=True, silent=False) or {}
         tool_name = payload.get("name")
         tool_args = payload.get("args") or {}
+        approval_token = payload.get("approval_token")
         if not tool_name:
             return jsonify({"error": {"message": "Tool name required", "type": "validation_error", "code": 400}}), 400
 
         orchestrator = current_app.config["ORCH_ORCHESTRATOR"]
-        result = orchestrator.registry.execute(tool_name, **tool_args)
+        result = orchestrator.execute_tool_guarded(
+            tool_name,
+            tool_args,
+            approval_token=approval_token,
+            trace_id=getattr(g, "request_id", None),
+        )
         return jsonify({"result": result})
+
+    @app.post("/v1/tools/approve")
+    @_limit_route
+    def tools_approve():
+        if not _api_enabled():
+            return jsonify({"error": {"message": "API disabled", "type": "service_unavailable", "code": 503}}), 503
+        ok, err = require_bearer()
+        if not ok:
+            return jsonify(err), 401
+
+        payload = request.get_json(force=True, silent=False) or {}
+        tool_name = payload.get("name")
+        tool_args = payload.get("args") or {}
+        ttl_seconds = payload.get("ttl_seconds")
+        if not tool_name:
+            return jsonify({"error": {"message": "Tool name required", "type": "validation_error", "code": 400}}), 400
+
+        approvals = ToolApprovalStore()
+        approval = approvals.issue(tool_name, tool_args, ttl_seconds=ttl_seconds)
+        return jsonify({
+            "approval_id": approval.approval_id,
+            "tool": approval.tool_name,
+            "args_hash": approval.args_hash,
+            "created_at": approval.created_at,
+            "expires_at": approval.expires_at,
+            "status": approval.status,
+        }), 200
 
     return Blueprint("orchestrator_api", __name__)
