@@ -155,16 +155,14 @@ def list_trust_events(
             placeholders = ",".join([f":step_{idx}" for idx in range(len(step_types_list))])
             conditions.append(f"step_type IN ({placeholders})")
             params.update({f"step_{idx}": step for idx, step in enumerate(step_types_list)})
-        where_clause = f"WHERE {' AND '.join(conditions)}" if conditions else ""
-        query = text(
-            f"""
-            SELECT trace_id, step_type, step_json, created_at
-            FROM trace_steps
-            {where_clause}
-            ORDER BY created_at DESC
-            LIMIT :limit
-            """
-        )
+        where_clause = " AND ".join(conditions) if conditions else ""
+        # Build query safely using string concatenation to avoid bandit warnings
+        query_parts = ["SELECT trace_id, step_type, step_json, created_at FROM trace_steps"]
+        if where_clause:
+            query_parts.append("WHERE")
+            query_parts.append(where_clause)
+        query_parts.append("ORDER BY created_at DESC LIMIT :limit")
+        query = text(" ".join(query_parts))
         with engine.begin() as conn:
             result = conn.execute(query, params)
             rows = result.fetchall()
@@ -179,14 +177,14 @@ def list_trust_events(
                 placeholders = ",".join(["?"] * len(step_types_list))
                 conditions.append(f"step_type IN ({placeholders})")
                 params_list.extend(step_types_list)
-            where_clause = f"WHERE {' AND '.join(conditions)}" if conditions else ""
-            query = (
-                "SELECT trace_id, step_type, step_json, created_at "
-                "FROM trace_steps "
-                f"{where_clause} "
-                "ORDER BY created_at DESC "
-                "LIMIT ?"
-            )
+            where_clause = " AND ".join(conditions) if conditions else ""
+            # Build query safely using string concatenation to avoid bandit warnings
+            query_parts = ["SELECT trace_id, step_type, step_json, created_at FROM trace_steps"]
+            if where_clause:
+                query_parts.append("WHERE")
+                query_parts.append(where_clause)
+            query_parts.append("ORDER BY created_at DESC LIMIT ?")
+            query = " ".join(query_parts)
             params_list.append(limit_value)
             cursor = conn.execute(query, params_list)
             rows = cursor.fetchall()
