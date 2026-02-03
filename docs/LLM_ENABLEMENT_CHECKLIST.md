@@ -24,6 +24,11 @@ ORCHESTRATORS_V2 ships with LLMs **OFF** by default. If you enable LLMs, use thi
 Optional hardening:
 - `ORCH_LLM_MODEL_ALLOWLIST` (comma-separated list of approved models)
 
+## 📎 References
+
+- [LLM Provider Contract](LLM_PROVIDER_CONTRACT.md)
+- [Tool Approval Contract](TOOL_APPROVAL_CONTRACT.md)
+
 ## 🔍 Verification Script
 
 ```bash

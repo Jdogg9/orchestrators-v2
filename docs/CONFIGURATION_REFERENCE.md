@@ -23,8 +23,15 @@ Single-source, auto-scannable reference of Orchestrators-v2 environment flags.
 | ORCH_INTENT_ROUTER_ENABLED | 0 | Enable intent router. | Med |
 | ORCH_INTENT_ROUTER_SHADOW | 0 | Shadow intent routing comparisons. | Low |
 | ORCH_LLM_ENABLED | 0 | Enable LLM calls. | High |
+| ORCH_LLM_NETWORK_ENABLED | 0 | Allow outbound provider calls. | High |
 | ORCH_LLM_HEALTH_TIMEOUT_SEC | 5 | LLM health check timeout (seconds). | Low |
+| ORCH_LLM_MAX_OUTPUT_CHARS | 4000 | Max output size for provider responses. | High |
 | ORCH_LLM_PROVIDER | ollama | LLM provider backend. | Med |
+| ORCH_LLM_RETRY_COUNT | 0 | Provider retry count. | Med |
+| ORCH_LLM_RETRY_BACKOFF_SEC | 0.5 | Backoff between retries (seconds). | Low |
+| ORCH_LLM_CIRCUIT_MAX_FAILURES | 3 | Circuit breaker failure threshold. | High |
+| ORCH_LLM_CIRCUIT_RESET_SEC | 30 | Circuit breaker reset window (seconds). | Med |
+| ORCH_LLM_MODEL_ALLOWLIST | "" | Approved provider model IDs. | Med |
 | ORCH_LLM_TIMEOUT_SEC | 30 | LLM inference timeout (seconds). | Med |
 | ORCH_LOG_JSON | 1 | Emit JSON logs. | Low |
 | ORCH_LOG_LEVEL | INFO | Log level. | Low |
@@ -74,6 +81,10 @@ Single-source, auto-scannable reference of Orchestrators-v2 environment flags.
 | ORCH_TOOL_SANDBOX_FALLBACK | 0 | Allow fallback when sandbox unavailable. | Med |
 | ORCH_TOOL_SANDBOX_REQUIRED | 1 | Require sandbox for tool execution. | High |
 | ORCH_TOOL_WEB_SEARCH_ENABLED | 0 | Enable web search tool. | Med |
+| ORCH_TRUST_PANEL_ENABLED | 0 | Enable Trust Panel endpoints. | High |
+| ORCH_TRUST_PANEL_DEBUG | 0 | Enable Trust Panel debug metadata. | Med |
+| ORCH_TRUST_PANEL_MAX_EVENTS | 200 | Max events returned per query. | Med |
+| ORCH_TRUST_PANEL_MAX_VALUE_CHARS | 500 | Max chars retained per payload value. | Med |
 | ORCH_TRACE_DB_PATH | instance/trace.db | Trace DB path. | Med |
 | ORCH_TRACE_ENABLED | 1 | Enable trace receipts. | High |
 | ORCH_MODEL_CHAT | qwen2.5:3b | Chat model name. | Med |

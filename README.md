@@ -13,6 +13,9 @@ You get deterministic routing + tools without turning into a sprawling framework
 - ✅ Production Action Plan: ACTION_PLAN.md
 - 🧭 Intent Router: docs/INTENT_ROUTER.md
 - 🧾 Operator Contract: docs/OPERATOR_CONTRACT.md
+- 🧪 Quickstart Walkthrough: docs/QUICKSTART.md
+- 🧾 Trust Panel: docs/TRUST_PANEL.md
+- 🧩 LLM Provider Contract: docs/LLM_PROVIDER_CONTRACT.md
 
 A reproducible, local-first **privacy-first orchestration framework** with production-oriented guardrails and safety-first defaults
 for a stable identity + routing + tools + optional memory, designed for *your* machine and *your* rules.

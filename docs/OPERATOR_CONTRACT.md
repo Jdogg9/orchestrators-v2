@@ -23,6 +23,13 @@ This document defines what ORCHESTRATORS_V2 guarantees, what it does not guarant
 - **Network controls**: For hard isolation, run the service on a restricted network namespace or host.
 - **Secrets hygiene**: Never commit runtime databases or environment files.
 - **Observability**: Monitor trace receipts and routing summaries after changes.
+- **Trust Panel**: Enable only when needed; treat outputs as redacted metadata.
+
+## Related Docs
+
+- [Trust Panel](TRUST_PANEL.md)
+- [LLM Provider Contract](LLM_PROVIDER_CONTRACT.md)
+- [Production Readiness](PRODUCTION_READINESS.md)
 
 ## Durability Note (Postgres)
 

@@ -9,7 +9,7 @@ def test_trust_panel_sanitizes_sensitive_fields():
         "authorization": "Bearer sk-test-abcdef1234567890",
         "api_key": "sk-test-abcdef1234567890",
         "nested": {"token": "ghp_abcdefghijklmnopqrstuvwxyz0123456789abcd"},
-        "note": "contact me at user@example.com",
+        "note": "contact me at user@redacted.local",
     }
     sanitized, redactions = sanitize_payload(payload)
 

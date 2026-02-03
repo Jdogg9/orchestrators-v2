@@ -21,6 +21,12 @@ local-first, and auditable.
 - Clear boundaries for memory + receipts
 - Audit-friendly message envelopes
 
+## Preflight Reviewer (Opt-in)
+
+- Optional “preflight” advisory step before tool execution (see [PREFLIGHT_REVIEWER.md](PREFLIGHT_REVIEWER.md))
+- Produces a structured risk summary (never exposed to end users)
+- Must remain disabled unless it meets the same receipt + redaction requirements
+
 ## Status
 
 These modules are not in core and should remain **opt-in** until they can meet

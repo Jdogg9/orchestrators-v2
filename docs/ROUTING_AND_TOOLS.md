@@ -115,6 +115,8 @@ See [examples/toy_orchestrator.py](../examples/toy_orchestrator.py).
 - Default policy can deny unsafe tools while allowing known safe handlers.
 - Policy rules can include conditional checks on tool inputs (length limits).
 
+See also: [Tool Approval Contract](TOOL_APPROVAL_CONTRACT.md) and [Trust Panel](TRUST_PANEL.md).
+
 ### Example
 ```python
 from src.policy_engine import PolicyEngine

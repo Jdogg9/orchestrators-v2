@@ -56,9 +56,14 @@ This repo is a **reference implementation**. Below is a short, concrete checklis
 
 ## Testing Coverage (Current State)
 
-Today’s automated tests focus primarily on **repo facts validation** and **basic API smoke checks** (`tests/test_repo_facts.py`). This ensures documentation fidelity and minimal service health, but does not yet cover advanced routing, tool policy enforcement, sandbox execution, Postgres-backed memory/tracing, or negative-path security cases.
+Automated tests cover:
+- Repo facts + route verification (`tests/test_repo_facts.py`)
+- Tool approval guardrails (`tests/test_tool_approval_guard.py`)
+- Approval lifecycle (`tests/test_tool_approvals.py`)
+- LLM provider contracts (`tests/test_llm_provider_contract.py`)
+- Trust panel redaction + chain verification (`tests/test_trust_panel.py`)
 
-**Next step for production hardening:** introduce integration tests for routing/model selection, policy deny paths, sandbox isolation, Postgres persistence, auth failures, and observability signal correctness.
+Gaps still remain around sandbox isolation, Postgres-backed tracing, and end-to-end integration flows.
 
 ## Scope Disclaimer
 

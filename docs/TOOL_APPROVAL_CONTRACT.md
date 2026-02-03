@@ -81,6 +81,21 @@ Approvals are stored in SQLite by default:
 - **Replay**: `args_hash` binding prevents mismatched execution.
 - **Expiry**: TTL limits long-lived approvals.
 
+## Execution Flow (TOCTOU Guard)
+
+```text
+request -> preflight/tool plan -> approval issued -> guarded execution -> receipt
+```
+
+Guarded execution re-checks:
+- `approval_id` exists and is pending
+- `tool` matches
+- `args_hash` matches
+- TTL not expired
+- consume-once enforced
+
+If any condition fails, execution is denied with `approval_required`.
+
 ## Minimal Example
 
 1) Issue approval

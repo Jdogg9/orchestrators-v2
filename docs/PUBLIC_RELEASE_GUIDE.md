@@ -106,6 +106,7 @@ git push -u origin main
 - .env.example (safe defaults)
 - Threat model + architecture docs
 - Quickstart guides
+ - Trust panel docs (redacted metadata only)
 
 ### ❌ Never Published
 - Private ORCHESTRATOR identity/prompts
@@ -148,6 +149,7 @@ ORCH_MEMORY_ENABLED=0      # User must opt-in
 ORCH_RECALL_ENABLED=0      # User must opt-in
 ORCH_TOOL_CODE_EXEC=0      # User must opt-in
 ORCH_REQUIRE_BEARER=0      # Demo mode safe
+ORCH_TRUST_PANEL_ENABLED=0 # User must opt-in
 ```
 
 ## Verification Commands

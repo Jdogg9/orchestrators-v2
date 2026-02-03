@@ -43,3 +43,26 @@ Add email/webhook integrations in:
 
 - Metrics require auth in production (Bearer token).
 - The Collector currently logs traces; attach a backend (Tempo, Jaeger, or OTLP gateway) as needed.
+
+## OTLP Integration
+
+To export traces to an external collector, set:
+
+```
+ORCH_OTEL_ENABLED=1
+ORCH_OTEL_EXPORTER_OTLP_ENDPOINT=http://collector:4318/v1/traces
+```
+
+Compatible backends include:
+- Grafana Tempo
+- Jaeger (OTLP)
+- OpenTelemetry Collector pipelines
+
+## Retention & Scrubbing
+
+- Keep trace DBs out of version control.
+- Rotate logs based on operator retention policies.
+- Trust Panel endpoints return **redacted** metadata only.
+
+Related:
+- [Trust Panel](TRUST_PANEL.md)
